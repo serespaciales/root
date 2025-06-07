@@ -1,0 +1,765 @@
+
+/* === choices === */
+/* Contenedor general */
+
+html, body {
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: clamp(8px, 1.5vw, 16px);
+}
+
+
+#palette, #palette-main-wrapper, #palette-main, #palette-panels, #palette-properties, #palette-layers {
+  box-sizing: border-box;
+}
+
+
+ .info-list, .info-list ul, .info-body, .info-list li {
+  max-width: 100vw !important;
+  width: 100% !important;
+  display: block !important;
+}
+
+
+
+.choices {
+  font-family: monospace;
+  max-width: fit-content; /* o lo que tú quieras */
+  font-size: clamp(8px, 1.5vw, 16px);
+  background-color: rgb(245, 245, 245);
+  border: 1px solid rgb(74, 67, 61);
+  border-radius: 8px;
+  color: rgb(74, 67, 61);
+}
+
+/* Tamaño del campo desplegado */
+.choices__inner {
+  background-color: rgb(245, 245, 0);
+  font-family: monospace;
+  min-height: 28px !important;
+  padding: 4px 8px !important;
+  font-size: 16px !important;
+  line-height: 1.2;
+}
+
+.choices__item {
+  font-family: monospace;
+  color: rgb(74, 67, 61);
+  font-size: 16px !important;
+}
+/* === Reset & Base === */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  font-family: monospace;
+  overflow: auto;
+  background-color: #fff;
+}
+
+canvas {
+  pointer-events: none;
+}
+
+.canvas-dragger {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 25px;
+  height: 25px;
+  background: black;
+  color: white;
+  font-size: clamp(8px, 1.5vw, 16px);
+  text-align: center;
+  line-height: 25px;
+  cursor: move;
+  border-bottom-right-radius: 4px;
+  z-index: 10;
+}
+
+
+#canvas-wrapper {
+  position: absolute;
+  z-index: 0;
+  top: 5px;
+  left: 5px;
+  width: calc(100vw - 10px);
+  height: calc(100vh - 10px);
+  overflow: hidden;
+}
+ 
+
+#main-canvas {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* IMPORTANTE si hay botones encima */
+}
+
+
+/* === Resizers === */
+.resizer.top-right {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+  width: 30px;
+  height: 30px;border-radius: 8px;
+  background-color: rgb(237, 237, 237);
+  border: 1px solid rgb(74, 67, 61);
+  color: #3c3c3c;
+  font-size: clamp(8px, 1.5vw, 16px);
+  font-family: 'pixel_DBT';
+  position: absolute;
+  z-index: 10;
+}
+
+
+.top-left { top: 0; left: 0; cursor: nwse-resize; }
+.top-right { top: 0; right: 0; cursor: nesw-resize; }
+.bottom-left { bottom: 0; left: 0; cursor: nesw-resize; }
+.bottom-right { bottom: 0; right: 0; cursor: nwse-resize; }
+
+
+
+/* === BUTTONS === */
+
+@font-face {
+  font-family: 'pixel_DBT';
+  src: url('fonts/pixel_DBT.ttf') format('truetype');
+}
+
+.icon-btn,
+.tool-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background-color: rgb(208, 252, 118);
+  border: 1px solid rgb(255, 255, 255);
+  color: #3c3c3c;
+  font-size: clamp(8px, 1.5vw, 16px);
+  font-family: 'pixel_DBT';
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.tool-btn.active {
+  background: rgb(60, 60, 60, 0.8);
+  color: rgb(237, 237, 237, 0.8);
+}
+
+.fullscreen-btn {
+  position: absolute;
+  top: 0;
+  right: 30px; /* justo a la izquierda del handle */
+  z-index: 10;
+}
+
+
+/* === Pop-up Panels === */
+.popup {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 1000;
+  font-family: monospace;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  width: auto;
+  max-width: 95vw;
+  max-height: 90vh;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* HEADER */
+
+
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: transparent;    /* Fondo oscuro SIEMPRE */
+  color: rgb(222, 222, 222);
+  border-top-right-radius: 18px;
+  font-size: clamp(8px, 1.5vw, 16px);
+  width: 100%;
+}
+
+
+
+.popup .popup-close:hover {
+  transform: scale(1.1);
+}
+
+/* CONTENIDO  & TEXTO */
+/*text pop up */
+.popup-content {
+  background: rgba(203, 196, 194, 0.9);
+  padding: 5px;
+  color: rgb(60, 60, 60, 0-8);
+  font-size: clamp(8px, 1.5vw, 16px);
+  overflow-y: auto;
+  max-height: 70vh;
+  border-bottom-left-radius: 18px;
+  border-bottom-right-radius: 18px;
+  display: block;
+  flex-direction: column;
+}
+
+
+
+/* OPCIONAL: estilos para etiquetas e inputs */
+.popup-content label {
+  display: flex;
+  flex-direction: column !important;
+  font-size: clamp(8px, 1.5vw, 16px);
+  color: rgb(74, 67, 61);
+  gap: 4px;
+}
+
+
+
+/* === Hide UI === */
+body.hide-ui #palette,
+body.hide-ui #main-actions,
+body.hide-ui #tool-actions,
+body.hide-ui .popup {
+  display: none !important;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/*INFORMATIVE POPUP */
+
+/*background pop up */
+
+.info-style {
+  font-family: monospace;
+  background: rgb(208, 252, 118, 0.8);
+  color: rgb(60, 60, 60, 0.8);
+  max-width: 95vw;      /* ← NUNCA más ancho que pantalla */
+  width:max-content;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  word-break: break-word; 
+  height: auto;
+  max-height: 90vh;     /* ← máximo 90% de alto de pantalla */
+  padding: 9px;
+  border-radius: 30px;
+  border-top-left-radius: 0;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+
+.info-style .popup-header {
+  font-weight: lighter;
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+}
+
+
+.info-style .shortcuts{
+  background: none;
+  border: none;
+  font-weight: lighter;
+  font-family: monospace;
+  font-size: clamp(8px, 1.5vw, 16px);
+  cursor: pointer;
+}
+
+
+
+.info-text {
+  font-family: monospace;
+  font-size: clamp(8px, 1.5vw, 16px);
+  text-align: left;
+}
+
+.info-text .info-title {
+  background:rgb(208, 252, 118);
+  color:  rgb(74, 67, 61);
+  font-size: clamp(40px, 13vw, 180px); /* Si el pop-up se achica, el título nunca será menos de 40px */ 
+  padding-left: 0;
+  padding-top: 15px;
+  padding-bottom: 15px;
+  max-width: 100%;
+  font-family: 'JetBrains Mono';
+  font-weight: lighter;
+  align-items: left;
+  border-top-right-radius: 100px;
+}
+
+.info-text .info-title h2 {
+  margin-left: 0px;
+}
+
+.info-text .info-subtitle {
+  color: rgb(74, 67, 61);
+  font-size: clamp(8px, 1.5vw, 16px);
+  padding-left: 7px;
+  padding-top: 15px;
+  padding-bottom: 15px;
+  max-width: 100%;
+  font-family: 'JetBrains Mono';
+  font-weight: lighter;
+  justify-content: space-between;
+  align-items: left;
+}
+
+.info-text .info-dividertop {
+    border: none;
+    border-top: 8px solid rgb(74, 67, 61);
+    margin-bottom: 35px;   /* Controla el espacio arriba y abajo */
+    margin-top: 80px;
+    max-width: 100%;
+    height: 0;         /* Importante: ¡No agregues alto extra! */
+  }
+
+  .info-text .info-dividerbottom {
+    border: none;
+    border-top: 8px solid  rgb(74, 67, 61); /* Controla el espacio arriba y abajo */
+    margin-top: 15px;
+    margin-bottom: 210px; 
+    max-width: 100%;
+    height: 0;         /* Importante: ¡No agregues alto extra! */
+  }
+
+.info-text .info-section-title {
+  background:rgb(208, 252, 118);
+  color:  rgb(74, 67, 61);
+  border-top-right-radius: 16px;
+  margin-top: 21px;
+  margin-bottom: 21px;
+  font-size: clamp(8px, 1.5vw, 16px);
+  padding: 3px 0px 3px 7px;
+  font-family: 'JetBrains Mono';
+  font-weight: lighter;
+  justify-content: space-between;
+  align-items: left;
+}
+
+.info-text .info-body {
+  font-size: clamp(8px, 1.5vw, 16px);
+  max-width: 100%;
+  overflow-x: hidden;
+  margin-bottom: 15px;
+  padding-left: 7px;
+
+}
+
+
+
+
+.info-text .info-list li {
+  font-size: clamp(8px, 1.5vw, 16px);
+  padding-left: 7px;
+  max-width: 100%;
+  overflow-x: hidden;
+  margin-bottom: 18px;
+
+}
+
+
+
+.info-text .info-footer {
+  font-size: clamp(8px, 1.5vw, 16px);
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  font-style: italic;
+  text-align: center;
+}
+
+.info-list ul {
+  max-width: fit-content;
+}
+
+.info-text ul {
+  max-width: 100%;
+  text-align: left;
+}
+
+
+
+
+
+/*TOOL PALETTE ALL MENU */
+
+/* --- PALETTE Y PANEL PRINCIPAL --- */
+#palette {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1001;
+  height: 40vh;
+  max-height: 40vh;
+  min-height: 200px;
+  box-sizing: border-box;
+}
+
+
+#palette-main-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+  background-color: rgba(208, 252, 118, 0.8);
+  border: 1px solid rgb(74, 67, 61);
+  border-top-right-radius: 18px;
+  padding: 10px;     /* ← El padding da espacio interno al borde */
+}
+
+#palette-main {
+  display: flex;
+  align-items: stretch;
+  flex-direction: row;
+  height: 100%;
+  box-sizing: border-box;
+  gap: 10px;         /* ← Este es el espacio entre tools y panels */
+  padding: 0;
+  min-width: 0;
+}
+
+#palette-tools-col {
+  display: flex;
+  flex-direction: column; /* Tools title encima de los botones */
+  height: 100%;
+}
+
+
+
+
+
+/* --- Contenido scrolleable SOLO DENTRO de cada panel --- */
+#palette-properties .tool-options,
+#layer-panel {
+  overflow-y: auto;
+}
+
+/* Capas: el listado debe usar el alto del panel */
+
+/* --- SIDEBAR --- */
+#palette-sidebar-wrapper {
+  margin-left: 0px;
+  z-index: 2;
+  background-color:rgba(208, 252, 118, 0.8);
+  border: 1px solid rgb(74, 67, 61);
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  border-top-right-radius: 8px;
+}
+
+#palette-sidebar {
+  background: rgba(203, 196, 194, 0.9);
+  margin: 10px;
+  padding: 10px;
+  border-top-right-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+
+.tool-options input,
+.tool-options select {
+  flex-direction: column;
+}
+
+/* Ajusta scrollbars sólo en paneles internos */
+
+
+
+/* === LIBRERIAS === */
+
+/* === Tippy.js custom theme: modulariem === */
+.tippy-box[data-theme~='modulariem'] {
+  background-color: rgb(245, 245, 245); /* gris claro */
+  color: rgb(74, 67, 61);                /* texto gris oscuro */
+  border: 1px solid rgb(74, 67, 61);     /* borde gris oscuro */
+  font-family: monospace;
+  font-size: clamp(8px, 1.5vw, 16px);
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+/* Cambia el color de la flechita según la posición del tooltip */
+.tippy-box[data-theme~='modulariem'][data-placement^='top'] > .tippy-arrow::before {
+  border-top-color: rgb(74, 67, 61); 
+}
+.tippy-box[data-theme~='modulariem'][data-placement^='bottom'] > .tippy-arrow::before {
+  border-bottom-color: rgb(74, 67, 61); 
+}
+.tippy-box[data-theme~='modulariem'][data-placement^='left'] > .tippy-arrow::before {
+  border-left-color: rgb(74, 67, 61); 
+}
+.tippy-box[data-theme~='modulariem'][data-placement^='right'] > .tippy-arrow::before {
+  border-right-color: rgb(74, 67, 61); 
+}
+
+/* === LAYERS === */
+
+ 
+
+
+.header-left {
+  display: block;
+  align-items: center;
+  gap: 12px;
+}
+
+.popup-close {
+  background: rgb(74, 67, 61);     /* Fondo oscuro SIEMPRE */
+  border: none;
+  color: rgb(203, 196, 194);       /* Texto claro */
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(8px, 1.5vw, 16px);
+  padding: 3px 14px 3px 14px;
+  border-radius: 0px 14px 0 0;
+  cursor: pointer;
+  font-weight: lighter;
+  min-width: 0;
+  box-sizing: border-box;
+  display: inline-block;
+  height: auto;
+  
+}
+
+/* Unifica el estilo de todos los botones */
+.popup-header button,
+.lang-btn,
+.popup-shortcuts {
+  background: rgb(74, 67, 61);     /* Fondo oscuro SIEMPRE */
+  border: none;
+  color: rgb(203, 196, 194);       /* Texto claro */
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(8px, 1.5vw, 16px);
+  padding: 3px 14px 3px 14px;
+  border-radius: 0px 14px 0 0;
+  cursor: pointer;
+  transition: background 0.13s, color 0.13s;
+  font-weight: lighter;
+  min-width: 0;
+  box-sizing: border-box;
+  display: inline-block;
+  height: auto;
+}
+
+#palette-header {
+     /* Fondo oscuro SIEMPRE */
+  display: flex;
+  justify-content: space-between;
+  align-items: left;
+  background: transparent;
+  color: rgb(203, 196, 194);       /* Texto claro */
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(8px, 1.5vw, 16px);
+  border-radius: 0px 14px 0 0;
+  font-weight: lighter;
+  width: 100%;
+  padding: 6px 18px 0 18px;
+}
+
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: transparent;    /* Fondo oscuro SIEMPRE */
+  color: rgb(222, 222, 222);
+  border-top-right-radius: 18px;
+  font-size: clamp(8px, 1.5vw, 16px);
+  width: 100%;
+  padding: 6px 18px 0 18px;
+}
+
+
+.popup-header button:hover,
+.lang-btn:hover,
+.lang-btn.active {
+  background: #d0fc76;        /* Verde claro en hover */
+  color: rgb(74, 67, 61);     /* Texto oscuro */
+}
+
+
+.lang-switch {
+  display: block;
+  gap: 8px; 
+  align-items: center;
+}
+
+
+
+
+/* --- Otros detalles útiles --- */
+.tool-options label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-bottom: 5px;
+}
+
+
+
+/* --- TOOLS --- */
+
+#palette-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top-right-radius: 18px;
+  padding: 10px;
+  background-color: rgba(203, 196, 194, 0.9);
+  height: 100%;
+  overflow-y: auto;
+  align-items: center;
+}
+
+#palette-panels {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+  flex: 1 1 0;
+  gap: 0px;
+  border-top-right-radius: 18px;
+}
+
+#palette-panels > .header-pill,
+#palette-panels > .layers-header {
+  margin-bottom: 0; /* por si acaso */
+}
+
+#palette-properties,
+#palette-layers {
+  flex: 1 1 0;
+  min-height: 0;       /* <--- esto permite que el panel haga scroll en vez de romper el contenedor */
+  max-height: 100%;    /* <--- esto limita el crecimiento */
+  display: flex;
+  flex-direction: rowx;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  background: rgba(203, 196, 194, 0.9);
+  border-top-right-radius: 18px;
+  overflow: auto;      /* <--- activa el scroll si el contenido se sale */
+}
+
+/* --- Encabezados iguales --- */
+
+#properties-title, 
+.header-pill,
+.tools-capsule,
+#tools-title {
+  background: rgb(74, 67, 61);
+  color:  rgb(203, 196, 194);
+  font-size: clamp(12px, 2vw, 18px);
+  display: flex;
+  align-items: flex-start;    /* CORREGIDO aquí */
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: lighter;
+  width: fit-content;
+  max-width: fit-content;
+  max-height: fit-content;
+  padding: 5px;
+  border-top-right-radius: 18px;
+  margin-bottom: 0;
+  margin-top: 0;
+}
+
+  .header-pill{
+    row-gap: 40px;
+
+  }
+
+  
+  .layers-header{
+  background: rgb(74, 67, 61);
+  color:  rgb(203, 196, 194);
+  margin: 0;
+  border-top-right-radius: 18px;
+  font-size: clamp(8px, 13vw, 12px);
+  font-family: 'JetBrains Mono', monospace;
+  max-width: fit-content;
+  max-height: fit-content;
+  font-weight: lighter;
+  }
+
+ #options-gradient,
+#options-text,
+#options-shape,
+#options-grid,
+#options-image,
+#options-growth {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 100%;
+  margin: 10px;
+  margin-bottom: 5px;
+}
+
+#layer-panel{
+  margin: 10px;
+}
+
+#layer-type-menu {
+  position: absolute;
+  top: 110%;  /* justo debajo del botón */
+  left: 0;
+  background: white;
+  border: 1px solid #ccc;
+  z-index: 999;
+  min-width: 120px;
+  box-shadow: 0 2px 8px #0001;
+  padding: 4px 0;
+}
+
+.layer-type-option {
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: none;
+  text-align: left;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+  padding: 7px 18px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.layer-type-option:hover {
+  background: #e2e2e2;
+}
+
+
+#layers-list {
+  height: 100%; /* o el alto de tu panel */
+  overflow-y: auto;
+  background: #f8f8f8;
+}

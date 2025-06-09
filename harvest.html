@@ -1,95 +1,159 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>HARVEST – Modulariem</title>
-  <link rel="stylesheet" href="style.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+  <title>Modulariem Harvest</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    body {
+      background: #fff;
+      font-family: 'JetBrains Mono', monospace;
+      margin: 0;
+    }
+    #harvest-container {
+      display: flex;
+      height: 100vh;
+    }
+    .panel {
+      flex: 1;
+      border: 1px solid #000;
+      padding: 1rem;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+    }
+    .panel h2 {
+      font-family: monospace;
+      text-transform: lowercase;
+      margin-bottom: 1rem;
+      font-size: 1.25rem;
+    }
+
+    /* seed-finder */
+    #seed-finder label,
+    #seed-finder input,
+    #seed-finder button {
+      display: block;
+      margin-bottom: .5rem;
+      position: relative;
+      z-index: 1;
+    }
+    #seedId {
+      width: 100%;
+      padding: .25rem;
+      font-family: monospace;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+    #seedError {
+      color: crimson;
+      font-size: .9rem;
+      min-height: 1.2em;
+      margin-bottom: .5rem;
+    }
+    #seed-finder .footer {
+      position: absolute;
+      bottom: 1rem;
+      left: 1rem;
+      color: #555;
+      white-space: pre;
+      line-height: 1.2;
+      font-size: .875rem;
+    }
+
+    /* canvases fill their panels */
+    .panel canvas,
+    #canvas-wrapper {
+      flex: 1;
+      width: 100%;
+      display: block;
+    }
+
+    /* summary styling */
+    #harvest-summary {
+      margin-top: 1rem;
+      font-size: 1rem;
+    }
+    #harvest-summary b {
+      display: block;
+      margin-bottom: .5rem;
+    }
+    #harvest-summary em {
+      display: block;
+      margin-bottom: .25rem;
+    }
+
+    /* shrink the original seed canvas to 60% */
+  #modularCanvas {
+    width: 60%;
+    height: auto;
+  }
+  /* style the fullscreen button */
+  #seedFullscreenBtn {
+    margin-bottom: 0.5rem;
+    font-family: monospace;
+    font-size: 0.9rem;
+  }
+  </style>
 </head>
-<body>
-    <div id="status-bar" style="
-    position:fixed;
-    top:0; left:0;
-    width:100%;
-    padding:4px;
-    font-size:14px;
-    background:rgba(255,255,255,0.9);
-    z-index:10000;
-    text-align:center;
-  ">status: initializing…</div>
-  <div class="grid-container">
-    
-    <!-- COLUMNA IZQUIERDA: buscador, título, etc. -->
-    <div class="left-column" style="grid-column: 1 / span 3;">
-      <h1 class="title">Harvest</h1>
-      <p class="subtitle">Browser-based, modular poster garden</p>
-      <p class="subtitle" style="margin-top: 20px; font-weight: bold;">Find Seed:</p>
-      <div class="harvest-search">
-        <input type="text" id="harvestSeedInput" placeholder="A01234"
-               style="padding:6px; width:160px; border:1px solid #333; border-radius:4px;"/>
-        <button id="findSeedBtn" class="button-black" style="margin-left:8px;">
-          Find Seed
-        </button>
-        <p class="subtitle" style="margin-top: 20px; font-weight: bold;">View:</p>
-        <!-- Harvest Controls -->
-<div id="harvest-controls" style="margin-top:1em;">
-    <!-- Toggle between original and growing views -->
-    <label>
-        <input type="radio" name="viewMode" value="original" checked> Original
-      </label>
-      <label>
-        <input type="radio" name="viewMode" value="growing"> Growing
-      </label>
-        
-     <!-- SAVE TO GARDEN -->
-  <button id="saveToGardenBtn" class="button-black">
-    Save to Garden
-  </button>
-</div>
+<body data-mode="view">
 
-<!-- Growth Timer Feedback -->
-<div id="growth-timer" style="margin-top:8px; font-size:14px; color:#555;">
-    Growth: 0:00 / 0:00
-  </div>
-  
+
+  <div id="harvest-container">
+    <!-- 1) seed finder panel -->
+    <div id="seed-finder" class="panel">
+      <h2>seed finder</h2>
+      <label for="seedId">Seed ID (7 chars):</label>
+      <input
+        type="text" id="seedId"
+        placeholder="Enter 7-char seed…"
+        maxlength="7"
+        autocomplete="off"
+        autocapitalize="characters"
+      />
+      <!-- ← inline error appears here -->
+      <div id="seedError"></div>
+      <button type="button" id="lookupBtn">Lookup</button>
+      <div class="footer">
+        Copy↵
+        Edit↵
+        root↵
+        harvest↵
+        garden↵
       </div>
     </div>
 
-    <!-- COLUMNA CENTRAL: aquí irá el canvas, idéntico al de la principal -->
-    <div class="center-column" style="grid-column: 4 / span 5; position: relative;">
-      <!-- fondo gris de la página principal -->
-      <div class="canvas-background"></div>
-      <!-- contenedor donde p5 inyecta el <canvas> -->
-      <div class="canvas-container">
-        <div id="main-canvas"></div>
-      </div>
+    <!-- 2) seed (original) panel -->
+    <div id="seed" class="panel">
+      <h2>seed</h2>
+      <canvas id="modularCanvas" style="flex:1; transform: scale(0.6); transform-origin: top left;"></canvas>
+      <button id="seedFullscreenBtn" style="margin-top:.5em; font-family:monospace;">Full Size</button>
     </div>
 
+    <!-- 3) harvest (grown) panel -->
+    <div id="harvest" class="panel">
+      <h2>harvest</h2>
+      <canvas id="harvestCanvas"></canvas>
+      <div id="harvest-summary"></div>
+    </div>
   </div>
 
-  <!-- lógica del buscador -->
-  <script>
-    document.getElementById('findSeedBtn').addEventListener('click', () => {
-      const s = document.getElementById('harvestSeedInput')
-                   .value.trim().toUpperCase();
-      if (!/^[A-Z]\d{5}$/.test(s)) {
-        return alert('Formato inválido: A–Z + 5 dígitos');
-      }
-      const ps = new URLSearchParams(location.search);
-      ps.set('seed', s);
-      window.location.search = ps.toString();
-    });
-    // rellenar el input con la seed actual
-    document.addEventListener('DOMContentLoaded', () => {
-      const s = new URLSearchParams(location.search).get('seed');
-      if (s) document.getElementById('harvestSeedInput').value = s;
-    });
-  </script>
 
+    <!-- … above your other scripts … -->
 
-
-  <!-- tu script de p5 que dibuja el grid & visuals -->
+  <!-- 0) Shared helpers -->
+  <script src="common.js"></script>
+  <!-- 1) p5 + your editor runtime -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+  <script src="sketch.js"></script>
+  <!-- 2) Firebase compat SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/11.9.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.9.0/firebase-firestore-compat.js"></script>
+  <!-- 3) Your harvest logic -->
   <script src="harvest.js"></script>
+
+  
 </body>
 </html>

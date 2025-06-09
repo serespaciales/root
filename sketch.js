@@ -2,6 +2,9 @@
 
 // --- Variables globales ---
 
+
+
+const MODE = document.body.dataset.mode || 'edit'; // to divide between view and edit mode for harvest.
 const minGap       = 10;  // separación mínima en px entre líneas vecinas
 const handleRadius = 8;
 const wrapper = document.getElementById('canvas-wrapper');
@@ -78,6 +81,7 @@ let textSettings = {
 };
 
 
+
 // --- SEED LOGIC ---
 
 /**
@@ -141,46 +145,6 @@ function saveGridConfig() {
 
 /*seed saving*----- SAVING POSTER */
 
-async function savePoster(seed, state) {
-  const posterRef = db.collection("posters").doc(seed);
-
-  const doc = await posterRef.get();
-  const timestamp = firebase.firestore.FieldValue.serverTimestamp();
-
-  if (!doc.exists) {
-    // Primera vez: guarda el estado inicial y el más reciente
-    await posterRef.set({
-      seed: seed,
-      initial_state: state,
-      latest_state: state,
-      created_at: timestamp,
-      updated_at: timestamp
-    });
-  } else {
-    // Ya existe: solo se actualiza el estado más reciente
-    await posterRef.update({
-      latest_state: state,
-      updated_at: timestamp
-    });
-  }
-
-  console.log("Poster guardado:", seed);
-}
-
-
-const firebaseConfig = {
-  apiKey: "AIzaSyB0OPf70M-JjJms7q946gSC7t9Y_GTtQM0",
-  authDomain: "modulariem.firebaseapp.com",
-  projectId: "modulariem",
-  storageBucket: "modulariem.firebasestorage.app",
-  messagingSenderId: "335997512595",
-  appId: "1:335997512595:web:3bb562384a48c04a39d666",
-  measurementId: "G-NM1QL4Q499"
-};
-
-// Inicializa Firebase y Firestore
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
 
 
 // === PALETA NEÓN SOLO TRES COLORES ===
@@ -213,7 +177,9 @@ function randomColorFromNeonPalette() {
   return `rgb(${arr[0]}, ${arr[1]}, ${arr[2]})`;
 }
 
+
 function setup() {
+  // ——— 1) Inicializar canvas + buffer ———
   const container = select('#canvas-wrapper').elt;
   canvas = createCanvas(container.clientWidth, container.clientHeight);
   canvas.parent('canvas-wrapper');
@@ -224,38 +190,42 @@ function setup() {
 
   gradientBuffer = createGraphics(width, height);
 
-  setupGradientColorInputs();
-  setupInfoPopup();
-  setupImageUpload();
+  // ——— 2) Si estamos en Harvest (view), sólo dibujamos una vez y paramos el loop ———
+  if (MODE === 'view') {
+    drawSeed();   // tu función que repinta la composición
+    noLoop();     // detiene el loop de p5
+    return;
+  }
 
-  const seedInput = select('input[name="seed"]'); 
+  // ——— 3) El resto es sólo para el editor (Modularum) ———
+
+  // 3.1) Cargar valor del seed en el input (oculto)
+  const seedInput = select('input[name="seed"]');
   if (seedInput) seedInput.value(seed);
 
+  // 3.2) Botón “Open in Harvest”
   const btn = document.getElementById('seed-btn');
   if (btn) {
     btn.addEventListener('click', () => {
-      const url = `harvest.html?seed=${seed}`;
-      window.open(url, '_blank', 'noopener');
+      window.open(`harvest.html?seed=${seed}`, '_blank', 'noopener');
     });
   }
 
+  // 3.3) Sliders de grid
   sliders.rows    = select('input[name="rows"]');
   sliders.columns = select('input[name="columns"]');
 
-  // --- Solo para seed NUEVO ---
-  let isNewSeed = !localStorage.getItem(`modulariem-${seed}`);
-
+  // 3.4) Primera vez vs semilla existente
+  const isNewSeed = !localStorage.getItem(`modulariem-${seed}`);
   if (isNewSeed) {
     randomSeed(hashSeedToNumber(seed));
-    const min = 2, max = 5;
-    const randomRows = floor(random(min, max + 1));
-    const randomCols = floor(random(min, max + 1));
-    sliders.rows.value(randomRows);
-    sliders.columns.value(randomCols);
-
+    const r = floor(random(2, 6));
+    const c = floor(random(2, 6));
+    sliders.rows.value(r);
+    sliders.columns.value(c);
     updateGridPositions();
 
-    // Crea el layer default SOLO para el grid inicial (3 colores NEÓN, random por celda)
+    // capa por defecto
     const defaultLayer = {
       id: generateLayerID(),
       name: "gradient 1",
@@ -263,53 +233,76 @@ function setup() {
       color: randomColorFromNeonPalette(),
       visuals: {}
     };
-    for (let r = 0; r < randomRows; r++) {
-      for (let c = 0; c < randomCols; c++) {
-        defaultLayer.visuals[`${r}-${c}`] = {
+    for (let i = 0; i < r; i++) {
+      for (let j = 0; j < c; j++) {
+        defaultLayer.visuals[`${i}-${j}`] = {
           type: "gradient",
           colors: [
             randomColorFromNeonPalette(),
             randomColorFromNeonPalette(),
             randomColorFromNeonPalette()
           ],
-          offset: Math.random()
+          offset: random(0,1)
         };
       }
     }
-    window.layers.length = 0;
-    window.layers.push(defaultLayer);
+    window.layers = [ defaultLayer ];
     window.activeLayer = defaultLayer;
     renderLayersUI();
-
-    if (typeof saveGridConfig === "function") saveGridConfig();
-    if (typeof saveVisuals === "function") saveVisuals();
+    saveGridConfig();
+    saveVisuals();
     redraw();
 
   } else {
-    // Si el seed ya existe, cargar el grid y layers guardados normalmente
-    [sliders.rows, sliders.columns].forEach(slider => {
-      const min = +slider.elt.min, max = +slider.elt.max;
-      if (!slider.value()) slider.value(floor(random(min, max + 1)));
+    // carga configuración y capas guardadas
+    [sliders.rows, sliders.columns].forEach(s => {
+      const lo = +s.elt.min, hi = +s.elt.max;
+      if (!s.value()) s.value(floor(random(lo, hi+1)));
     });
     updateGridPositions();
-
-    // Si no hay layers (raro, pero puede pasar), crea el default
-    if (window.layers.length === 0) {
-      const defaultLayer = {
-        id: generateLayerID(),
-        name: "gradient 1",
-        type: "gradient",
-        color: randomColorFromNeonPalette(),
-        visuals: {}
-      };
-      window.layers.push(defaultLayer);
-      window.activeLayer = defaultLayer;
+    if (!window.layers.length) {
+      // crea la capa default si no hay ninguna
+      window.layers = [ createDefaultLayer() ];
+      window.activeLayer = window.layers[0];
     }
-    renderLayersUI();   
-    
+    renderLayersUI();
   }
 
-  // --- Lógica de hash para reproducibilidad ---
+  // 3.5) Inicializadores de UI del editor
+  setupGradientColorInputs();
+  setupInfoPopup();
+  setupImageUpload();
+  setupSliderFeedback('.grid-sliders label');
+  setupToolLogic();
+  setupUnifyButton();
+  setupGridEditingLogic();
+  setupResizerHandle();
+
+  // 3.6) Hook de “Apply Growth” – sólo existe en edit mode
+  const applyBtn = document.getElementById('applyGrowthBtn');
+  if (applyBtn) {
+    applyBtn.addEventListener('click', async () => {
+      const cfg = {
+        sun:      +document.querySelector('input[name="sun"]').value,
+        water:    +document.querySelector('input[name="water"]').value,
+        vitamins: +document.querySelector('input[name="vitamins"]').value,
+        days:     +document.querySelector('input[name="days"]').value,
+        startDate:new Date().toISOString()
+      };
+      try {
+        await seedsCol.doc(seed).set(
+          { growthConfig: cfg, updatedAt: firebase.firestore.FieldValue.serverTimestamp() },
+          { merge: true }
+        );
+        alert(`✅ Growth settings saved for seed ${seed}`);
+      } catch (err) {
+        console.error(err);
+        alert(`❌ Error saving growth settings: ${err.message}`);
+      }
+    });
+  }
+
+  // ——— 4) Función auxiliar para hash→número ———
   function hashSeedToNumber(str) {
     let h = 5381;
     for (let i = 0; i < str.length; i++) {
@@ -318,15 +311,10 @@ function setup() {
     return Math.abs(h);
   }
 
-  // ---- SETUP UI GENERAL ----
-  setupSliderFeedback('.grid-sliders label');
-  setupToolLogic();
-  setupUnifyButton();
-  setupGridEditingLogic();
-  setupResizerHandle();
-
+  // Marco visual en editor
   activeBorderColor = color(0, 255, 0);
 }
+
 
 function setupResizerHandle() {
   const wrapper = document.getElementById('canvas-wrapper');
@@ -438,29 +426,103 @@ if (!window.activeLayer && window.layers.length > 0) {
 
 
 // THIS IS THE GROWING OPTIONS PART-----> When the user clicks Apply:
-document.getElementById('applyGrowthBtn').addEventListener('click', () => {
-  const cfg = {
-    sun:      +document.querySelector('input[name="sun"]').value,
-    water:    +document.querySelector('input[name="water"]').value,
-    vitamins: +document.querySelector('input[name="vitamins"]').value,
-    days:     +document.querySelector('input[name="days"]').value,
-    startDate: new Date().toISOString()
-  };
-  localStorage.setItem(
-    `modulariem-${seed}-growth`,
-    JSON.stringify(cfg)
-  );
-  alert('✅ Growth settings saved for seed ' + seed);
-});
+// THIS IS THE GROWING OPTIONS PART-----> When the user clicks Apply:
+// THIS IS THE GROWING OPTIONS PART-----> When the user clicks Apply:
+// THIS IS THE GROWING OPTIONS PART-----> When the user clicks Apply:
+// THIS IS THE GROWING OPTIONS PART-----> When the user clicks Apply:
+// THIS IS THE GROWING OPTIONS PART-----> When the user clicks Apply:
+// THIS IS THE GROWING OPTIONS PART-----> When the user clicks Apply:
+// THIS IS THE GROWING OPTIONS PART-----> When the user clicks Apply:
+
+if (MODE === 'edit') {
+  const applyBtn = document.getElementById('applyGrowthBtn');
+  if (applyBtn) {
+    applyBtn.addEventListener('click', async () => {
+      // 1) Gather the form values
+      const cfg = {
+        sun:       +document.querySelector('input[name="sun"]').value,
+        water:     +document.querySelector('input[name="water"]').value,
+        vitamins:  +document.querySelector('input[name="vitamins"]').value,
+        days:      +document.querySelector('input[name="days"]').value,
+        startDate: new Date().toISOString()
+      };
+
+      try {
+        // 2) Write (or merge) into Firestore under this seed
+        await seedsCol.doc(seed).set(
+          {
+            growthConfig: cfg,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          },
+          { merge: true }
+        );
+
+        // 3) Feedback to user
+        alert(`✅ Growth settings saved for seed ${seed}`);
+      } catch (err) {
+        console.error(err);
+        alert(`❌ Error saving growth settings: ${err.message}`);
+      }
+    });
+  }
+}
 
 
-// --- p5.js draw en bucle ---
-function draw() {
+
+// THIS IS THE GROWING OPTIONS PART-----> When the user clicks Apply:
+// THIS IS THE GROWING OPTIONS PART-----> When the user clicks Apply:
+// THIS IS THE GROWING OPTIONS PART-----> When the user clicks Apply:
+// THIS IS THE GROWING OPTIONS PART-----> When the user clicks Apply:
+// THIS IS THE GROWING OPTIONS PART-----> When the user clicks Apply:
+// THIS IS THE GROWING OPTIONS PART-----> When the user clicks Apply:
+// THIS IS THE GROWING OPTIONS PART-----> When the user clicks Apply:
+
+/**
+ * Carga en el sketch el estado guardado de un seed:
+ * - gridConfig: filas, columnas, margen…
+ * - visuals: capa activa y sus visuals por celda
+ * - layers (si usas múltiples)
+ */
+function loadSeed(data) {
+  // 1) Grid
+  if (data.gridConfig) {
+    sliders.rows.value(data.gridConfig.rows);
+    sliders.columns.value(data.gridConfig.cols);
+    updateGridPositions();
+  }
+  // 2) Visuales
+  if (data.visuals) {
+    // si tu código usa directamente `visuals`
+    window.visuals = data.visuals;
+  }
+  // 3) Capa activa
+  if (data.layers) {
+    window.layers = data.layers;
+    window.activeLayer = window.layers[0];
+  }
+  // 4) Actualizar UI de layers (si existe)
+  if (typeof renderLayersUI === 'function') {
+    renderLayersUI();
+  }
+}
+
+
+
+// ------------------------------------------------------------------
+// Draw the full “seed” composition on demand
+// ------------------------------------------------------------------
+function drawSeed() {
   clear();
   drawGrid();
   drawVisuals();
   updateGlobalGradient(["#ff00ff", "#00ffff", "#ffffff"]);
+  if (editingGrid) drawGridHandles();
+}
 
+
+// --- p5.js draw en bucle ---
+function draw() {
+  drawSeed();
   // Feedback de cursor cuadrado verde
   if (editingGrid || activeTool) {
     noFill();
@@ -505,6 +567,8 @@ function draw() {
 
 // --- Dibujar el grid (líneas) ---
 function drawGrid() {
+  if (MODE === 'view') return;           // skip grid drawing in Harvest
+  if (!Array.isArray(window.layers)) return;  // no layers array? bail
   noFill();
   // build a p5 Color from your hex + opacity
   const c = color(gridColor);
@@ -2635,7 +2699,9 @@ function selectToolButton(toolType) {
 
 
 function renderLayersUI() {
+  if (MODE !== 'edit') return; 
   const list = document.getElementById("layers-list");
+  if (!list) return;  
   list.innerHTML = "";
 
   window.layers.forEach((layer, index) => {
@@ -3138,3 +3204,214 @@ function paintWrappedText(
 
   ctx.restore();
 }
+
+
+///
+/////
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+// ───────── Growth Overlay Primitives ─────────
+
+// Helper: convert RGB [0–255] → HSL [0–1]
+function rgbToHsl(r, g, b) {
+  r/=255; g/=255; b/=255;
+  const max = max3(r,g,b), min = min3(r,g,b), d = max-min,
+        l = (max+min)/2;
+  let h=0, s=0;
+  if (d!==0) {
+    s = d / (1 - abs(2*l-1));
+    switch(max) {
+      case r: h = ((g-b)/d + (g<b?6:0))/6; break;
+      case g: h = ((b-r)/d + 2)/6; break;
+      case b: h = ((r-g)/d + 4)/6; break;
+    }
+  }
+  return [h, s, l];
+}
+function hslToRgb(h, s, l) {
+  let r, g, b;
+  if (s===0) r=g=b=l;
+  else {
+    const q = l < 0.5 ? l*(1+s) : l+s-l*s;
+    const p = 2*l - q;
+    r = hue2rgb(p,q,h+1/3);
+    g = hue2rgb(p,q,h);
+    b = hue2rgb(p,q,h-1/3);
+  }
+  return [r*255, g*255, b*255];
+}
+function hue2rgb(p, q, t) {
+  if      (t<0) t+=1;
+  else if (t>1) t-=1;
+  if      (t<1/6) return p + (q-p)*6*t;
+  else if (t<1/2) return q;
+  else if (t<2/3) return p + (q-p)*(2/3-t)*6;
+  return p;
+}
+// convenience
+function max3(a,b,c){ return a>b?(a>c?a:c):(b>c?b:c); }
+function min3(a,b,c){ return a<b?(a<c?a:c):(b<c?b:c); }
+function abs(x){ return x<0?-x:x; }
+
+// 1) Vine Curl
+window.vineCurl = function(A, Ca, K) {
+  // This will modulate the existing shapes’ outlines.
+  // A.extrudePct→ how far to offset, A.distortion→ sine on those offsets,
+  //     A.branches→ how many splits if you’d subdivide a path,
+  //     A.hueAnimation→ cycle HSL on path
+  // Ca.* → crystalline spikes parameters
+  // K.* → ice fronds parameters
+  //
+  // For now, we’ll do a simple edge‐glow:
+  push();
+  blendMode(ADD);
+  filter(BLUR, A.bloom?.sigma || 4);
+  pop();
+  return this;
+};
+
+// 2) Chlorophyll Radiance
+window.chlorophyllRadiance = function(hueShift, satShift, bloomSigma, bloomIntensityScale, palette) {
+  loadPixels();
+  for (let i = 0; i < pixels.length; i += 4) {
+    let r = pixels[i], g = pixels[i+1], b = pixels[i+2];
+    let [h,s,l] = rgbToHsl(r,g,b);
+    // apply hue shift
+    h = (h + hueShift/360) % 1;
+    // apply saturation
+    if (satShift !== null) {
+      s = min3(1,1, s + satShift/100);
+    } else {
+      // oscillate
+      const t = (sin(millis()/1000 * TWO_PI /5)+1)/2;  // 5s cycle
+      s = map(t, 0,1, palette[0]/*low*/, palette[1]/*high*/);
+    }
+    [r,g,b] = hslToRgb(h,s,l);
+    pixels[i]   = r;
+    pixels[i+1] = g;
+    pixels[i+2] = b;
+  }
+  updatePixels();
+  // bloom glow
+  push();
+  blendMode(ADD);
+  filter(BLUR, bloomSigma);
+  pop();
+  return this;
+};
+
+// 3) Bloom Expansion
+window.bloomExpansion = function(clusterDetection, mode, extrusionPct, materialOpacity, tintOrGradient, fractal, subdivisions, displacementMethod, noise, pbrSettings) {
+  // We’ll overlay a semi‐transparent noise field
+  push();
+  noFill();
+  strokeWeight(1);
+  // scatter some fractal noise if requested
+  if (noise) {
+    for (let i=0; i<1000; i++) {
+      const x = random(width), y = random(height),
+            r = noise.scale * randomGaussian();
+      stroke(lerpColor(color(tintOrGradient[0]), color(tintOrGradient[1]||tintOrGradient[0]), random()));
+      point(x + noisePersistence(y,noise), y);
+    }
+  }
+  // tint
+  fill(tintOrGradient[0] || '#fff');
+  rect(0,0,width,height, 0);
+  pop();
+  return this;
+};
+
+// 4) Moss Mirage
+window.mossMirage = function(segmentation, mode, specklesPct, speckleRadiusPx, tintColors, blurSigma, patchGrouping, perlin, brightnessAnim) {
+  // paint neon speckles
+  push();
+  noStroke();
+  for (let i = 0; i < width*height*specklesPct/100; i++) {
+    fill(random(tintColors));
+    const x = random(width), y = random(height);
+    ellipse(x, y, speckleRadiusPx*2);
+  }
+  pop();
+  // blur into patches
+  if (blurSigma > 0) filter(BLUR, blurSigma);
+  // animate brightness
+  if (brightnessAnim) {
+    const v = map(sin(millis()/1000 * TWO_PI / brightnessAnim.period), -1,1, 0.8,1.2);
+    tint(255,255*v);
+  }
+  return this;
+};
+
+
+
+////
+///
+///
+///
+///
+///
+///
+///
+///
+///
+///
+//
+//
+//
+//
+//
+/**
+ * Completely clears and redraws the canvas
+ * based on the Firestore‐saved layers array.
+ */
+// ─── Load a saved seed composition (Harvest viewer) ───
+/**
+ * Replace the in‐memory grid & layers with the Firestore‐saved data,
+ * then redraw the canvas exactly as the user created it.
+ *
+ /**
+ * Reproduce en pantalla la composición original guardada en Firestore.
+ @param {Object} seedData  - El documento .data() de Firestore, con al menos:
+ *    • seedData.layers    Array de capas (tu estructura de “layers”)
+ *    • (opcional) seedData.rows      número de filas de grid
+ (opcional) seedData.columns   número de columnas de grid
+ */
+window.loadSeed = function(seedData) {
+  // 1) Restaurar tamaño de grid si existe
+  if (typeof seedData.rows === 'number' && typeof seedData.columns === 'number') {
+    rows    = seedData.rows;
+    columns = seedData.columns;
+    updateGridPositions();
+    // si estás en modo edit (no view), mantén sliders sincronizados:
+    if (MODE === 'edit') {
+      select('input[name="rows"]').value(rows);
+      select('input[name="columns"]').value(columns);
+    }
+  }
+
+  // 2) Restaurar capas
+  window.layers      = Array.isArray(seedData.layers) ? seedData.layers : [];
+  window.activeLayer = window.layers[0] || null;
+
+  // 3) En modo edit, refresca la UI
+  if (MODE === 'edit') {
+    renderLayersUI();
+  }
+
+  // 4) Y dibuja una única vez con esa semilla
+  redraw();  // recuerda haber llamado noLoop() en modo view
+};

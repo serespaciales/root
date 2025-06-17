@@ -1,54 +1,64 @@
-// 🌱 Modulariem - Versión completa corregida
-
-// --- Variables globales ---
-
-
-
-const MODE = document.body.dataset.mode || 'edit'; // to divide between view and edit mode for harvest.
-const minGap       = 10;  // separación mínima en px entre líneas vecinas
+//-----------------------------------R
+                                      //O
+                                      //O
+                                      ///T---------------------------------------------------------
+// 
+// 
+// 
+// 
+// 
+// 
+// 
+// 
+// 
+// 
+// 
+// 
+// 
+// 
+// 
+// 
+// global variables
+// Replace the global variables section (lines ~30-80)
+const MODE = document.body.dataset.mode || 'edit';
+const minGap = 10;
 const handleRadius = 8;
 const wrapper = document.getElementById('canvas-wrapper');
 const fullscreenBtn = document.querySelector('.fullscreen-btn');
 const palette = document.getElementById('palette');
 
-
-
-// VARIABLES GLOBALES PARA LAYERS 
 window.layers = window.layers || [];
 window.activeLayer = window.activeLayer || null;
 window.activeTool = window.activeTool || "gradient";
 
-
-// --- VARIABLES GLOBAL ---
 let sliders = {};
 let canvas;
-let editingGrid = false;       // Modo edición de grid
-let draggingHandle = null;     // Qué handle estamos arrastrando
-let draggingLine = null;       // Qué línea de grid estamos arrastrando
-let draggingType = null;  
+let editingGrid = false;
+let draggingHandle = null;
+let draggingLine = null;
+let draggingType = null;
 let colStart, rowStart, colEnd, rowEnd;
 let textStartCell;
-let startX, startY;            // Coordenadas iniciales del ratón al arrastrar
-let startOffsetX, startOffsetY;// Offset inicial del grid al arrastrar
+let startX, startY;
+let startOffsetX, startOffsetY;
 let startDragOffsetX = 0;
 let startDragOffsetY = 0;
-let dragOffsetX = 0, dragOffsetY = 0;  // Offset global del grid
+let dragOffsetX = 0, dragOffsetY = 0;
 let selectedTool = null;
-let activeTool = "gradient";   // Herramienta activa
-//let visuals;         // Objetos dibujados por celda, clave "row-col"
-let isFullscreen = false; // al inicio del script
+let activeTool = "gradient";
+let isFullscreen = false;
 let lastCellKey = null;
 let lastShapeCells = [];
 let gradientColors = ["#ffffff", "#888888", "#000000"];
 let globalOffset = 0;
-let columnPositions = [];      // Posiciones X de líneas verticales
-let rowPositions = [];         // Posiciones Y de líneas horizontales
-let gridPoints = []; 
+let columnPositions = [];
+let rowPositions = [];
+let gridPoints = [];
 let useUnifiedOffset = false;
 let typedText = "";
 let gridColor = "#000000";
-let gridOpacity = 255;         // 0–255
-let loadedImage = null;        // Para la herramienta image
+let gridOpacity = 255;
+let loadedImage = null;
 let topZIndex = 1000;
 let gradientBuffer;
 let uploadedImage = null;
@@ -57,20 +67,21 @@ let justSelectedImage = false;
 let activeImageEdit = null;
 let imageScaleSlider = null;
 let activePopups = [];
-// Text Editing Variables
 let textCursorVisible = false;
 let lastCursorBlink = 0;
-const cursorBlinkSpeed = 500; // ms between blinks
+const cursorBlinkSpeed = 500;
 let textCursor = 0;
-let textSelectionStart = -1; // -1 means no selection
+let textSelectionStart = -1;
 let isSelectingText = false;
-let compositionText = ""; // For IME input
+let compositionText = "";
 let compositionActive = false;
-let mouseDownOnText = false;       // ¿Estoy haciendo clic dentro de un módulo en edición?
+let mouseDownOnText = false;
 let clickOffsetIndex = null;
-let currentTextarea = null; 
-let activeTextEdit = null; 
+let currentTextarea = null;
+let activeTextEdit = null;
 let imageStartCell = null;
+let saveTimeout = null;
+let hasUnsavedChanges = false;
 
 let textSettings = {
   font: "sans-serif",
@@ -81,12 +92,77 @@ let textSettings = {
 };
 
 
-
 // --- SEED LOGIC ---
+
+
 
 /**
  * Genera un seed de 7 caracteres alfanuméricos (A–Z, a–z, 0–9)
  */
+// Replace the SEED LOGIC section (lines ~100-170) with this:
+function markChanges() {
+  hasUnsavedChanges = true;
+}
+
+async function saveToFirestore() {
+  if (MODE === 'view') return;
+
+  try {
+    const sanitizedLayers = window.layers.map(layer => ({
+      id: layer.id || generateLayerID(),
+      name: layer.name || `Layer ${window.layers.indexOf(layer) + 1}`,
+      type: layer.type || 'gradient',
+      color: layer.color || randomColorFromNeonPalette(),
+      visible: typeof layer.visible === 'boolean' ? layer.visible : true,
+      visuals: Object.keys(layer.visuals || {}).reduce((acc, key) => {
+        const visual = { ...layer.visuals[key] };
+        // Remove all p5-specific or unserializable properties
+        delete visual.pg;
+        if (visual.colors) visual.colors = visual.colors.map(c => typeof c === 'string' ? c : c.toString().replace(/ /g, ''));
+        if (visual.text && visual.text.color) visual.text.color = typeof visual.text.color === 'string' ? visual.text.color : visual.text.color.toString().replace(/ /g, '');
+        if (visual.shape && visual.shape.fillColor) visual.shape.fillColor = typeof visual.shape.fillColor === 'string' ? visual.shape.fillColor : visual.shape.fillColor.toString().replace(/ /g, '');
+        if (visual.shape && visual.shape.strokeColor) visual.shape.strokeColor = typeof visual.shape.strokeColor === 'string' ? visual.shape.strokeColor : visual.shape.strokeColor.toString().replace(/ /g, '');
+        acc[key] = visual;
+        return acc;
+      }, {})
+    }));
+
+    const gridConfig = {
+      rows: parseInt(sliders.rows?.value?.() || 2, 10),
+      cols: parseInt(sliders.columns?.value?.() || 2, 10),
+      canvasWidth: width || 800,
+      canvasHeight: height || 600
+    };
+
+    const data = {
+      seedCode: seed,
+      layers: sanitizedLayers,
+      gridConfig,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    console.log('Saving data to Firestore:', JSON.stringify(data, null, 2)); // Detailed debug log
+    await seedsCol.doc(seed).set(data, { merge: true });
+
+    console.log(`✅ Auto-saved seed ${seed} to Firestore`);
+    hasUnsavedChanges = false;
+  } catch (err) {
+    console.error('Error saving to Firestore:', err);
+    console.warn(`❌ Failed to auto-save: ${err.message}`);
+  }
+}
+function debounceSaveToFirestore() {
+  clearTimeout(saveTimeout);
+  markChanges();
+  saveTimeout = setTimeout(saveToFirestore, 1000);
+}
+
+setInterval(() => {
+  if (hasUnsavedChanges) {
+    saveToFirestore();
+  }
+}, 5000);
+
 function generateSeed() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let seed = '';
@@ -96,51 +172,29 @@ function generateSeed() {
   return seed;
 }
 
-/**
- * Usa un seed de la URL si existe, o genera uno nuevo
- */
 function getOrCreateSeed() {
   const params = new URLSearchParams(window.location.search);
   let s = params.get('seed');
-
-  // Si no existe o no tiene el largo correcto, generar uno nuevo
   if (!s || s.length !== 7) {
     s = generateSeed();
     params.set('seed', s);
     history.replaceState(null, '', '?' + params.toString());
   }
-
   return s;
 }
 
-// Semilla global (estable y única por sesión o URL)
 const seed = getOrCreateSeed();
 
-// Pre-carga de visuals almacenados (vacío si es nuevo)
-visuals = JSON.parse(
-  localStorage.getItem(`modulariem-${seed}`)
-) || {};
-
-/**
- * Guarda visuales actuales en localStorage
- */
-function saveVisuals() {
-  localStorage.setItem(
-    `modulariem-${seed}`,
-    JSON.stringify(visuals)
-  );
-}
-
-/**
- * Guarda la configuración del grid actual (rows, cols, margin)
- */
 function saveGridConfig() {
-  const gm = getGridMetrics(); // { rows, cols, margin, cellW, cellH }
-  localStorage.setItem(
-    `modulariem-${seed}-config`,
-    JSON.stringify({ rows: gm.rows, cols: gm.cols, margin: gm.margin })
-  );
+  markChanges();
+  debounceSaveToFirestore();
 }
+
+function saveVisuals() {
+  markChanges();
+  debounceSaveToFirestore();
+}
+
 
 
 /*seed saving*----- SAVING POSTER */
@@ -177,253 +231,321 @@ function randomColorFromNeonPalette() {
   return `rgb(${arr[0]}, ${arr[1]}, ${arr[2]})`;
 }
 
-
 function setup() {
-  // ——— 1) Inicializar canvas + buffer ———
-  const container = select('#canvas-wrapper').elt;
-  canvas = createCanvas(container.clientWidth, container.clientHeight);
-  canvas.parent('canvas-wrapper');
-  canvas.elt.setAttribute('tabindex', '0');
-  canvas.style('display', 'block');
-  canvas.style('width', '100%');
-  canvas.style('height', '100%');
+  if (MODE === 'edit') {
+      let container = select('#canvas-wrapper')?.elt;
+      if (!container) {
+          console.error('Canvas wrapper not found in edit mode');
+          return;
+      }
+      canvas = createCanvas(container.clientWidth, container.clientHeight);
+      canvas.parent('canvas-wrapper');
+      canvas.elt.setAttribute('tabindex', '0');
+      canvas.style('display', 'block');
+      canvas.style('width', '100%');
+      canvas.style('height', '100%');
+  } else {
+      canvas = createCanvas(800, 600); // Default size for view mode
+  }
 
   gradientBuffer = createGraphics(width, height);
 
-  // ——— 2) Si estamos en Harvest (view), sólo dibujamos una vez y paramos el loop ———
-  if (MODE === 'view') {
-    drawSeed();   // tu función que repinta la composición
-    noLoop();     // detiene el loop de p5
-    return;
-  }
-
-  // ——— 3) El resto es sólo para el editor (Modularum) ———
-
-  // 3.1) Cargar valor del seed en el input (oculto)
-  const seedInput = select('input[name="seed"]');
-  if (seedInput) seedInput.value(seed);
-
-  // 3.2) Botón “Open in Harvest”
-  const btn = document.getElementById('seed-btn');
-  if (btn) {
-    btn.addEventListener('click', () => {
-      window.open(`harvest.html?seed=${seed}`, '_blank', 'noopener');
-    });
-  }
-
-  // 3.3) Sliders de grid
-  sliders.rows    = select('input[name="rows"]');
-  sliders.columns = select('input[name="columns"]');
-
-  // 3.4) Primera vez vs semilla existente
-  const isNewSeed = !localStorage.getItem(`modulariem-${seed}`);
-  if (isNewSeed) {
-    randomSeed(hashSeedToNumber(seed));
-    const r = floor(random(2, 6));
-    const c = floor(random(2, 6));
-    sliders.rows.value(r);
-    sliders.columns.value(c);
-    updateGridPositions();
-
-    // capa por defecto
-    const defaultLayer = {
-      id: generateLayerID(),
-      name: "gradient 1",
-      type: "gradient",
-      color: randomColorFromNeonPalette(),
-      visuals: {}
-    };
-    for (let i = 0; i < r; i++) {
-      for (let j = 0; j < c; j++) {
-        defaultLayer.visuals[`${i}-${j}`] = {
+  const initializeDefaultLayer = (rows = 2, cols = 2) => {
+      const defaultLayer = {
+          id: generateLayerID(),
+          name: "gradient 1",
           type: "gradient",
-          colors: [
-            randomColorFromNeonPalette(),
-            randomColorFromNeonPalette(),
-            randomColorFromNeonPalette()
-          ],
-          offset: random(0,1)
-        };
+          color: randomColorFromNeonPalette(),
+          visible: true,
+          visuals: {}
+      };
+      for (let i = 0; i < rows; i++) {
+          for (let j = 0; j < cols; j++) {
+              defaultLayer.visuals[`${i}-${j}`] = {
+                  type: "gradient",
+                  colors: [
+                      randomColorFromNeonPalette(),
+                      randomColorFromNeonPalette(),
+                      randomColorFromNeonPalette()
+                  ],
+                  offset: random(0, 1)
+              };
+          }
       }
-    }
-    window.layers = [ defaultLayer ];
-    window.activeLayer = defaultLayer;
-    renderLayersUI();
-    saveGridConfig();
-    saveVisuals();
-    redraw();
+      return defaultLayer;
+  };
 
+  updateGridPositions();
+
+  (async () => {
+      try {
+          const doc = await seedsCol.doc(seed).get();
+          let rows = 2, cols = 2;
+          if (doc.exists) {
+              const data = doc.data();
+              if (data.layers && Array.isArray(data.layers)) {
+                  window.layers = data.layers;
+                  rows = data.gridConfig?.rows || 2;
+                  cols = data.gridConfig?.cols || 2;
+              } else {
+                  window.layers = [initializeDefaultLayer(rows, cols)];
+                  await seedsCol.doc(seed).set({
+                      seedCode: seed,
+                      layers: window.layers,
+                      gridConfig: { rows, cols, canvasWidth: width || 800, canvasHeight: height || 600 },
+                      plantedAt: firebase.firestore.FieldValue.serverTimestamp()
+                  }, { merge: true });
+              }
+              if (data.gridConfig) {
+                  rows = data.gridConfig.rows || rows;
+                  cols = data.gridConfig.cols || cols;
+              }
+          } else {
+              window.layers = [initializeDefaultLayer(rows, cols)];
+              await seedsCol.doc(seed).set({
+                  seedCode: seed,
+                  layers: window.layers,
+                  gridConfig: { rows, cols, canvasWidth: width || 800, canvasHeight: height || 600 },
+                  plantedAt: firebase.firestore.FieldValue.serverTimestamp()
+              }, { merge: true });
+          }
+          window.activeLayer = window.layers[0] || null;
+          updateGridPositions();
+          if (MODE === 'edit') renderLayersUI();
+          redraw();
+          console.log('Layers loaded on setup:', window.layers.map(l => l.name));
+      } catch (err) {
+          console.error('Error loading from Firestore:', err);
+          window.layers = [initializeDefaultLayer()];
+          window.activeLayer = window.layers[0];
+          updateGridPositions();
+          if (MODE === 'edit') renderLayersUI();
+          redraw();
+      }
+  })().catch(err => console.error('Setup failed:', err));
+
+  if (MODE === 'edit') {
+      const seedInput = select('input[name="seed"]');
+      if (seedInput) seedInput.value(seed);
+
+      const btn = document.getElementById('seed-btn');
+      if (btn) {
+          btn.addEventListener('click', () => {
+              window.open(`harvest.html?seed=${seed}`, '_blank', 'noopener');
+          });
+      }
+
+      // Initialize sliders
+      sliders.rows = select('input[name="rows"]') || { value: () => 2 };
+      sliders.columns = select('input[name="columns"]') || { value: () => 2 };
+      sliders.sun = select('input[name="sun"]') || { value: () => 0 };
+      sliders.water = select('input[name="water"]') || { value: () => 0 };
+      sliders.vitamins = select('input[name="vitamins"]') || { value: () => 0 };
+      sliders.days = select('input[name="days"]') || { value: () => 1 };
+
+      if (typeof sliders.rows.value !== 'function') sliders.rows.value = () => 2;
+      if (typeof sliders.columns.value !== 'function') sliders.columns.value = () => 2;
+      if (typeof sliders.sun.value !== 'function') sliders.sun.value = () => 0;
+      if (typeof sliders.water.value !== 'function') sliders.water.value = () => 0;
+      if (typeof sliders.vitamins.value !== 'function') sliders.vitamins.value = () => 0;
+      if (typeof sliders.days.value !== 'function') sliders.days.value = () => 1;
   } else {
-    // carga configuración y capas guardadas
-    [sliders.rows, sliders.columns].forEach(s => {
-      const lo = +s.elt.min, hi = +s.elt.max;
-      if (!s.value()) s.value(floor(random(lo, hi+1)));
-    });
-    updateGridPositions();
-    if (!window.layers.length) {
-      // crea la capa default si no hay ninguna
-      window.layers = [ createDefaultLayer() ];
-      window.activeLayer = window.layers[0];
-    }
-    renderLayersUI();
+      sliders.rows = { value: () => 2 };
+      sliders.columns = { value: () => 2 };
+      sliders.sun = { value: () => 0 };
+      sliders.water = { value: () => 0 };
+      sliders.vitamins = { value: () => 0 };
+      sliders.days = { value: () => 1 };
   }
 
-  // 3.5) Inicializadores de UI del editor
-  setupGradientColorInputs();
-  setupInfoPopup();
-  setupImageUpload();
+  updateGridPositions();
+
+  const gradientColor1 = document.getElementById("gradient-color-1");
+  const gradientColor2 = document.getElementById("gradient-color-2");
+  const gradientColor3 = document.getElementById("gradient-color-3");
+  if (gradientColor1 && gradientColor2 && gradientColor3) {
+      setupGradientColorInputs();
+  }
+
+  const infoPopup = document.getElementById('info-popup');
+  if (infoPopup) {
+      setupInfoPopup();
+  }
+
+  const imageFileInput = document.getElementById("image-file-input");
+  if (imageFileInput) {
+      setupImageUpload();
+  }
+
   setupSliderFeedback('.grid-sliders label');
   setupToolLogic();
   setupUnifyButton();
   setupGridEditingLogic();
   setupResizerHandle();
 
-  // 3.6) Hook de “Apply Growth” – sólo existe en edit mode
   const applyBtn = document.getElementById('applyGrowthBtn');
   if (applyBtn) {
-    applyBtn.addEventListener('click', async () => {
-      const cfg = {
-        sun:      +document.querySelector('input[name="sun"]').value,
-        water:    +document.querySelector('input[name="water"]').value,
-        vitamins: +document.querySelector('input[name="vitamins"]').value,
-        days:     +document.querySelector('input[name="days"]').value,
-        startDate:new Date().toISOString()
-      };
-      try {
-        await seedsCol.doc(seed).set(
-          { growthConfig: cfg, updatedAt: firebase.firestore.FieldValue.serverTimestamp() },
-          { merge: true }
-        );
-        alert(`✅ Growth settings saved for seed ${seed}`);
-      } catch (err) {
-        console.error(err);
-        alert(`❌ Error saving growth settings: ${err.message}`);
-      }
-    });
+      applyBtn.addEventListener('click', async () => {
+          const cfg = {
+              sun: +sliders.sun.value() || 0,
+              water: +sliders.water.value() || 0,
+              vitamins: +sliders.vitamins.value() || 0,
+              days: +sliders.days.value() || 0,
+              startDate: new Date().toISOString()
+          };
+          try {
+              const sanitizedLayers = window.layers.map(layer => ({
+                  id: layer.id || generateLayerID(),
+                  name: layer.name || `Layer ${window.layers.indexOf(layer) + 1}`,
+                  type: layer.type || 'gradient',
+                  color: layer.color || randomColorFromNeonPalette(),
+                  visible: typeof layer.visible === 'boolean' ? layer.visible : true,
+                  visuals: Object.keys(layer.visuals || {}).reduce((acc, key) => {
+                      const visual = { ...layer.visuals[key] };
+                      // Remove all p5-specific or unserializable properties
+                      delete visual.pg;
+                      if (visual.colors) visual.colors = visual.colors.map(c => c.toString().replace(/ /g, ''));
+                      if (visual.text && visual.text.color) visual.text.color = visual.text.color.toString().replace(/ /g, '');
+                      acc[key] = visual;
+                      return acc;
+                  }, {})
+              }));
+
+              const gridConfig = {
+                  rows: parseInt(sliders.rows.value() || 2, 10),
+                  cols: parseInt(sliders.columns.value() || 2, 10),
+                  canvasWidth: width || 800,
+                  canvasHeight: height || 600
+              };
+
+              const data = {
+                  seedCode: seed,
+                  plantedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                  updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                  growthConfig: cfg,
+                  layers: sanitizedLayers,
+                  gridConfig: gridConfig,
+                  growthProgress: 0,
+                  locked: false
+              };
+
+              console.log('Saving data to Firestore:', data); // Debug log
+              await seedsCol.doc(seed).set(data, { merge: true });
+
+              alert(`✅ Growth settings and layers saved for seed ${seed}`);
+              markChanges();
+              const growthScript = document.createElement('script');
+              growthScript.src = 'growth.js';
+              document.body.appendChild(growthScript);
+              if (window.growthManager) {
+                  window.growthManager.init(seed);
+                  window.growthManager.applyGrowthConfig(cfg.sun, cfg.water, cfg.vitamins, cfg.days);
+              } else {
+                  console.error('growthManager not available');
+              }
+          } catch (err) {
+              console.error(err);
+              alert(`❌ Error saving growth settings: ${err.message}`);
+          }
+      });
   }
 
-  // ——— 4) Función auxiliar para hash→número ———
-  function hashSeedToNumber(str) {
-    let h = 5381;
-    for (let i = 0; i < str.length; i++) {
-      h = ((h << 5) + h) + str.charCodeAt(i);
-    }
-    return Math.abs(h);
-  }
-
-  // Marco visual en editor
   activeBorderColor = color(0, 255, 0);
 }
-
-
 function setupResizerHandle() {
+  if (MODE !== 'edit') {
+      console.log('this is is an editing function');
+      return;
+  }
   const wrapper = document.getElementById('canvas-wrapper');
 
-  // 🔳 Botón de fullscreen
   const fullscreenBtn = document.createElement('div');
   fullscreenBtn.innerHTML = 'O';
   fullscreenBtn.title = "Fullscreen";
   fullscreenBtn.classList.add('tool-btn', 'fullscreen-btn');
   wrapper.appendChild(fullscreenBtn);
 
-  // 🔵 Handle de redimensionar
   const resizer = document.createElement('div');
   resizer.classList.add('tool-btn', 'resizer', 'top-right');
   resizer.innerHTML = 'Z';
-
   wrapper.appendChild(resizer);
 
-  // 🌕 Estado global
   let isFullscreen = false;
 
-  // 🔁 Funciones para entrar y salir del fullscreen simulado
   function enterFullscreen() {
-    isFullscreen = true;
-    document.body.classList.add('hide-ui');
-
-    wrapper.style.position = 'fixed';
-    wrapper.style.top = '0';
-    wrapper.style.left = '0';
-    wrapper.style.width = '100vw';
-    wrapper.style.height = '100vh';
-
-    resizeCanvas(window.innerWidth, window.innerHeight);
-    updateGridPositions();
-
-    fullscreenBtn.innerHTML = '±';
+      isFullscreen = true;
+      document.body.classList.add('hide-ui');
+      wrapper.style.position = 'fixed';
+      wrapper.style.top = '0';
+      wrapper.style.left = '0';
+      wrapper.style.width = '100vw';
+      wrapper.style.height = '100vh';
+      resizeCanvas(window.innerWidth, window.innerHeight);
+      updateGridPositions();
+      fullscreenBtn.innerHTML = '±';
   }
 
   function exitFullscreen() {
-    isFullscreen = false;
-    document.body.classList.remove('hide-ui');
-
-    wrapper.style.position = 'absolute';
-    wrapper.style.top = '5px';
-    wrapper.style.left = '5px';
-    wrapper.style.width = 'calc(100vw - 10px)';
-    wrapper.style.height = 'calc(100vh - 10px)';
-
-    resizeCanvas(wrapper.offsetWidth, wrapper.offsetHeight);
-    updateGridPositions();
-
-    fullscreenBtn.innerHTML = 'O';
+      isFullscreen = false;
+      document.body.classList.remove('hide-ui');
+      wrapper.style.position = 'absolute';
+      wrapper.style.top = '5px';
+      wrapper.style.left = '5px';
+      wrapper.style.width = 'calc(100vw - 10px)';
+      wrapper.style.height = 'calc(100vh - 10px)';
+      resizeCanvas(wrapper.offsetWidth, wrapper.offsetHeight);
+      updateGridPositions();
+      fullscreenBtn.innerHTML = 'O';
   }
 
-  // 🖱️ Toggle con clic
   fullscreenBtn.addEventListener('click', () => {
-    isFullscreen ? exitFullscreen() : enterFullscreen();
+      isFullscreen ? exitFullscreen() : enterFullscreen();
   });
 
-  // ⎋ Salida con tecla Escape
   window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && isFullscreen) {
-      exitFullscreen();
-    }
+      if (e.key === 'Escape' && isFullscreen) {
+          exitFullscreen();
+      }
   });
 
-  // 🔧 Lógica de redimensionar canvas
   resizer.addEventListener('mousedown', e => {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const startW = wrapper.offsetWidth;
-    const startH = wrapper.offsetHeight;
+      e.preventDefault();
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startW = wrapper.offsetWidth;
+      const startH = wrapper.offsetHeight;
 
-    function resize(e) {
-      let newW = startW + (e.clientX - startX);
-      let newH = startH + (e.clientY - startY);
+      function resize(e) {
+          let newW = startW + (e.clientX - startX);
+          let newH = startH + (e.clientY - startY);
+          newW = Math.min(newW, window.innerWidth - wrapper.offsetLeft - 5);
+          newH = Math.min(newH, window.innerHeight - wrapper.offsetTop - 5);
+          newW = Math.max(200, newW);
+          newH = Math.max(200, newH);
+          wrapper.style.width = `${newW}px`;
+          wrapper.style.height = `${newH}px`;
+          resizeCanvas(newW, newH);
+          updateGridPositions();
+      }
 
-      newW = Math.min(newW, window.innerWidth - wrapper.offsetLeft - 5);
-      newH = Math.min(newH, window.innerHeight - wrapper.offsetTop - 5);
+      function stopResize() {
+          window.removeEventListener('mousemove', resize);
+          window.removeEventListener('mouseup', stopResize);
+      }
 
-      newW = Math.max(200, newW);
-      newH = Math.max(200, newH);
-
-      wrapper.style.width = `${newW}px`;
-      wrapper.style.height = `${newH}px`;
-
-      resizeCanvas(newW, newH);
-      updateGridPositions();
-    }
-
-    function stopResize() {
-      window.removeEventListener('mousemove', resize);
-      window.removeEventListener('mouseup', stopResize);
-    }
-
-    window.addEventListener('mousemove', resize);
-    window.addEventListener('mouseup', stopResize);
+      window.addEventListener('mousemove', resize);
+      window.addEventListener('mouseup', stopResize);
   });
+
+  
 }
 
-// Initialize layers if empty
 if (!window.layers || window.layers.length === 0) {
   createLayer();
 }
 if (!window.activeLayer && window.layers.length > 0) {
   window.activeLayer = window.layers[0];
 }
-
 
 // THIS IS THE GROWING OPTIONS PART-----> When the user clicks Apply:
 // THIS IS THE GROWING OPTIONS PART-----> When the user clicks Apply:
@@ -451,11 +573,18 @@ if (MODE === 'edit') {
         // 2) Write (or merge) into Firestore under this seed
         await seedsCol.doc(seed).set(
           {
+            plantedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
             growthConfig: cfg,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            layers: window.layers,
+            gridConfig: {
+              rows: parseInt(sliders.rows.value(), 10),
+              cols: parseInt(sliders.columns.value(), 10),
+            }
           },
           { merge: true }
         );
+        
 
         // 3) Feedback to user
         alert(`✅ Growth settings saved for seed ${seed}`);
@@ -490,36 +619,50 @@ function loadSeed(data) {
     sliders.columns.value(data.gridConfig.cols);
     updateGridPositions();
   }
-  // 2) Visuales
-  if (data.visuals) {
-    // si tu código usa directamente `visuals`
-    window.visuals = data.visuals;
-  }
-  // 3) Capa activa
+
+  // 2) Layers
   if (data.layers) {
     window.layers = data.layers;
-    window.activeLayer = window.layers[0];
+    window.activeLayer = window.layers[0] || null;
   }
-  // 4) Actualizar UI de layers (si existe)
-  if (typeof renderLayersUI === 'function') {
-    renderLayersUI();
-  }
+
+  // 3) Update UI and canvas
+  if (typeof renderLayersUI === 'function') renderLayersUI();
+  if (typeof redraw === 'function') redraw();
+
+  console.log(`✅ Seed ${seed} loaded from layers`);
 }
-
-
 
 // ------------------------------------------------------------------
 // Draw the full “seed” composition on demand
 // ------------------------------------------------------------------
 function drawSeed() {
   clear();
-  drawGrid();
-  drawVisuals();
+
+  if (!window.layers || !Array.isArray(window.layers)) {
+    console.warn('⚠️ drawSeed: No layers found');
+    return;
+  }
+
+  // Draw all visible layers in order (bottom to top)
+  window.layers.forEach((layer, index) => {
+    if (layer.visible) {
+      console.log(`Rendering layer ${index}: ${layer.name} (visible: ${layer.visible})`);
+      window.activeLayer = layer; // Temporarily set for drawVisuals
+      drawVisuals();
+      drawGrid();
+    }
+  });
+
+  // Restore active layer for editing
+  window.activeLayer = window.layers.find(l => l.id === window.activeLayer?.id) || window.layers[0] || null;
+
   updateGlobalGradient(["#ff00ff", "#00ffff", "#ffffff"]);
+
   if (editingGrid) drawGridHandles();
+
+  console.log(`✅ drawSeed() executed with ${window.layers.reduce((acc, layer) => acc + Object.keys(layer.visuals || {}).length, 0)} elements across ${window.layers.length} layers`);
 }
-
-
 // --- p5.js draw en bucle ---
 function draw() {
   drawSeed();
@@ -640,341 +783,233 @@ function updateGlobalGradient(colors, offset = 0) {
   }
 }
 function drawVisuals() {
+  const activeLayer = window.activeLayer;
+  if (!activeLayer) return;
 
-const activeLayer = window.activeLayer;
-if (!activeLayer) return; // Verificar si existe la capa activa
-const visuals = activeLayer.visuals;
-  // Extraer métricas de grid
   const { rows, cols, cellW, cellH } = getGridMetrics();
 
-  for (const layer of layers) {
-    const visuals = layer.visuals;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const key = `${r}-${c}`;
+      let visual = activeLayer.visuals[key];
+      if (!visual) {
+        activeLayer.visuals[key] = { type: "empty" };
+        visual = activeLayer.visuals[key];
+      }
 
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const key = `${r}-${c}`;
-        const visual = visuals[key];
-        if (!visual) continue;
+      const A = gridPoints[r][c];
+      const B = gridPoints[r][c + 1];
+      const C = gridPoints[r + 1][c + 1];
+      const D = gridPoints[r + 1][c];
+      const x = A.x;
+      const y = A.y;
+      const w = B.x - A.x;
+      const h = D.y - A.y;
 
-        // Coordenadas de la celda actual
-        const A = gridPoints[r][c];
-        const B = gridPoints[r][c + 1];
-        const C = gridPoints[r + 1][c + 1];
-        const D = gridPoints[r + 1][c];
-
-        const x = A.x;
-        const y = A.y;
-        const w = B.x - A.x;    // ancho total del bloque
-        const h = D.y - A.y;    // alto total del bloque
-
-        // ───── GRADIENT ─────────────────────────────────────────────────────────
-        if (visual.type === "gradient" && visual.colors) {
-          if (!visual.pg) {
-            visual.pg = createGraphics(w, h);
-            visual.pg.pixelDensity(1);
-          }
-          updateGradientBuffer(visual.pg, visual.colors, visual.offset || 0);
-          image(visual.pg, x, y, w, h);
+      if (visual.type === "gradient" && visual.colors) {
+        // Recreate p5.Graphics if not present or size changed
+        if (!visual.pg || visual.pg.width !== w || visual.pg.height !== h) {
+          visual.pg = createGraphics(w, h);
+          visual.pg.pixelDensity(1);
         }
+        updateGradientBuffer(visual.pg, visual.colors, visual.offset || 0);
+        image(visual.pg, x, y, w, h);
+      }
+      else if (visual.type === "text" && visual.text) {
+        const wCells = visual.w || 1;
+        const hCells = visual.h || 1;
+        const p10 = gridPoints[r][c + wCells];
+        const p01 = gridPoints[r + hCells][c];
+        if (p10 && p01) {
+          const x0 = A.x;
+          const y0 = A.y;
+          const w0 = p10.x - x0;
+          const h0 = p01.y - y0;
+          const textKey = key;
 
-        // ───── TEXTURE ─────────────────────────────────────────────────────────
-        else if (visual.type === "texture" && visual.texture) {
-          push();
-          translate(x, y);
-          drawTexture(w, h, visual.texture);
-          pop();
-        }
+          if (!(activeTextEdit === textKey && currentTextarea)) {
+            const font = visual.text.font || "sans-serif";
+            const size = Math.max(Number(visual.text.size) || 20, 4);
+            const color = visual.text.color || "#000000";
+            const leadingPx = Math.max(Number(visual.text.lineHeight) || size, 4);
+            let content = visual.text.content || "";
 
-        // ───── SHAPE ────────────────────────────────────────────────────────────
-        else if (visual.type === "shape" && visual.shape) {
-          const s = visual.shape;
-          push();
-          translate(x, y);
-          drawShape(
-            w,
-            h,
-            s.shapeType,
-            s.fillColor,
-            s.strokeColor,
-            s.size,
-            r,
-            c,
-            visuals
-          );
-          pop();
-        }
-////////////////////TEXT BLOCK///////////////////////
-else if (visual.type === "text" && visual.text) {
-  // Calculate block dimensions
-  const wCells = visual?.w ?? 1;
-  const hCells = visual?.h ?? 1;
-  const p10 = gridPoints[r]?.[c + wCells];
-  const p01 = gridPoints[r + hCells]?.[c];
-  if (!p10 || !p01) continue;
+            if (compositionActive && activeTextEdit === textKey) {
+              content = content.substring(0, textCursor) + compositionText + content.substring(textCursor);
+            }
 
-  // Calculate block coordinates
-  const x0 = A.x;
-  const y0 = A.y;
-  const w0 = p10.x - x0;
-  const h0 = p01.y - y0;
-  const textKey = key;
+            push();
+            noStroke();
+            textFont(font);
+            textSize(size);
+            textAlign(LEFT, TOP);
+            textLeading(leadingPx);
 
-  // Only render text if not using textarea for this block
-  if (!(activeTextEdit === textKey && currentTextarea)) {
-    // ─── Text Configuration ────────────────────────────────────
-    const font = visual.text.font || "sans-serif";
-    const size = Math.max(Number(visual.text.size) || 20, 4); // Minimum font size 4px
-    const color = visual.text.color || "#000000";
-    const leadingPx = Math.max(Number(visual.text.lineHeight) || size, 4);
-    let content = visual.text.content || "";
+            drawingContext.save();
+            drawingContext.beginPath();
+            drawingContext.rect(x0, y0, w0, h0);
+            drawingContext.clip();
 
-    // Handle IME composition
-    if (compositionActive && activeTextEdit === textKey) {
-      content = content.substring(0, textCursor) + 
-                compositionText + 
-                content.substring(textCursor);
-    }
+            const ctx = drawingContext;
+            const paddingX = cellW * 0.05;
+            const paddingY = cellH * 0.05;
+            const usableWidth = Math.max(w0 - 2 * paddingX, 1);
+            const usableHeight = Math.max(h0 - 2 * paddingY, 1);
+            const lineHeightPx = leadingPx;
+            const maxLines = Math.max(Math.floor(usableHeight / lineHeightPx), 1);
 
-    // ─── Text Rendering ───────────────────────────────────────
-    push();
-    noStroke();
-    textFont(font);
-    textSize(size);
-    textAlign(LEFT, TOP);
-    textLeading(leadingPx);
+            ctx.font = `${size}px ${font}`;
+            ctx.textBaseline = "top";
+            ctx.textAlign = "left";
 
-    // Setup clipping
-    drawingContext.save();
-    drawingContext.beginPath();
-    drawingContext.rect(x0, y0, w0, h0);
-    drawingContext.clip();
+            const wrappedLines = wrapTextInBox(ctx, content, usableWidth, maxLines, lineHeightPx, true);
+            paintWrappedText(ctx, x0, y0, usableWidth, h0, wrappedLines, paddingX, paddingY, lineHeightPx, `${size}px ${font}`, color);
 
-    // Calculate padding and usable area
-    const ctx = drawingContext;
-    const paddingX = cellW * 0.05;
-    const paddingY = cellH * 0.05;
-    const usableWidth = Math.max(w0 - 2 * paddingX, 1);
-    const usableHeight = Math.max(h0 - 2 * paddingY, 1);
-    const lineHeightPx = leadingPx;
-    const maxLines = Math.max(Math.floor(usableHeight / lineHeightPx), 1);
+            visual._wrappedLines = wrappedLines;
+            visual._paddingX = paddingX;
+            visual._paddingY = paddingY;
+            visual._lineHeightPx = lineHeightPx;
+            visual._fontSize = size;
 
-    // Configure text metrics
-    ctx.font = `${size}px ${font}`;
-    ctx.textBaseline = "top";
-    ctx.textAlign = "left";
+            drawingContext.restore();
+            pop();
 
-    // Wrap and render text
-    const wrappedLines = wrapTextInBox(
-      ctx,
-      content,
-      usableWidth,
-      maxLines,
-      lineHeightPx,
-      /*hyphenate=*/ true
-    );
+            if (activeTextEdit === textKey) {
+              if (textSelectionStart >= 0 && textSelectionStart !== textCursor) {
+                const start = Math.min(textSelectionStart, textCursor);
+                const end = Math.max(textSelectionStart, textCursor);
+                const wrapped = visual._wrappedLines || [];
 
-    paintWrappedText(
-      ctx,
-      x0,
-      y0,
-      usableWidth,
-      h0,
-      wrappedLines,
-      paddingX,
-      paddingY,
-      lineHeightPx,
-      `${size}px ${font}`,
-      color
-    );
+                fill(30, 120, 255, 100);
+                noStroke();
 
-    // Store text metrics for cursor/selection
-    visual._wrappedLines = wrappedLines;
-    visual._paddingX = paddingX;
-    visual._paddingY = paddingY;
-    visual._lineHeightPx = lineHeightPx;
-    visual._fontSize = size;
+                let charCount = 0;
+                let selY = y0 + paddingY;
+                for (let i = 0; i < wrapped.length; i++) {
+                  const line = wrapped[i];
+                  const lineStart = charCount;
+                  const lineEnd = charCount + line.length;
+                  if (end > lineStart && start < lineEnd) {
+                    const selStart = Math.max(start - lineStart, 0);
+                    const selEnd = Math.min(end - lineStart, line.length);
+                    const xStart = x0 + paddingX + textWidth(line.substring(0, selStart));
+                    const selWidth = textWidth(line.substring(selStart, selEnd));
+                    if (selY + lineHeightPx > y0 && selY < y0 + h0) {
+                      rect(xStart, selY, selWidth, lineHeightPx);
+                    }
+                  }
+                  charCount += line.length;
+                  selY += lineHeightPx;
+                }
+              }
 
-    drawingContext.restore();
-    pop();
+              const cycle = millis() % (cursorBlinkSpeed * 2);
+              const cursorVisible = cycle < cursorBlinkSpeed && !compositionActive;
+              if (cursorVisible && textCursor >= 0) {
+                let remChars = textCursor;
+                let curY = y0 + paddingY;
+                let curX = x0 + paddingX;
+                let found = false;
+                for (const line of visual._wrappedLines || []) {
+                  if (remChars <= line.length) {
+                    curX += textWidth(line.substring(0, remChars));
+                    found = true;
+                    break;
+                  }
+                  remChars -= line.length;
+                  curY += lineHeightPx;
+                }
+                if (found && curY + lineHeightPx > y0 && curY < y0 + h0) {
+                  fill(color);
+                  noStroke();
+                  rect(curX, curY, 2, lineHeightPx);
+                }
+              }
 
-    // ─── Cursor/Selection Rendering (custom mode) ─────────────
-    if (activeTextEdit === textKey) {
-      // Text selection
-      if (textSelectionStart >= 0 && textSelectionStart !== textCursor) {
-        const start = Math.min(textSelectionStart, textCursor);
-        const end = Math.max(textSelectionStart, textCursor);
-        const wrapped = visual._wrappedLines || [];
-        
-        fill(30, 120, 255, 100);
-        noStroke();
-        
-        let charCount = 0;
-        let selY = y0 + paddingY;
-        
-        for (let i = 0; i < wrapped.length; i++) {
-          const line = wrapped[i];
-          const lineStart = charCount;
-          const lineEnd = charCount + line.length;
-          
-          if (end > lineStart && start < lineEnd) {
-            const selStart = Math.max(start - lineStart, 0);
-            const selEnd = Math.min(end - lineStart, line.length);
-            const xStart = x0 + paddingX + textWidth(line.substring(0, selStart));
-            const selWidth = textWidth(line.substring(selStart, selEnd));
-            
-            if (selY + lineHeightPx > y0 && selY < y0 + h0) {
-              rect(xStart, selY, selWidth, lineHeightPx);
+              if (compositionActive && compositionText) {
+                let remChars = textCursor;
+                let imeY = y0 + paddingY;
+                let imeX = x0 + paddingX;
+                let found = false;
+                for (const line of visual._wrappedLines || []) {
+                  if (remChars <= line.length) {
+                    imeX += textWidth(line.substring(0, remChars));
+                    found = true;
+                    break;
+                  }
+                  remChars -= line.length;
+                  imeY += lineHeightPx;
+                }
+                if (found) {
+                  const compWidth = textWidth(compositionText);
+                  stroke(color);
+                  strokeWeight(1);
+                  line(imeX, imeY + lineHeightPx - 2, imeX + compWidth, imeY + lineHeightPx - 2);
+                }
+              }
+            }
+
+            if (activeTextEdit === textKey) {
+              push();
+              noFill();
+              stroke("limegreen");
+              strokeWeight(3);
+              rect(x0, y0, w0, h0);
+              pop();
             }
           }
-          
-          charCount += line.length;
-          selY += lineHeightPx;
         }
       }
-
-      // Text cursor (blinking)
-      const cycle = millis() % (cursorBlinkSpeed * 2);
-      const cursorVisible = cycle < cursorBlinkSpeed && !compositionActive;
-      
-      if (cursorVisible && textCursor >= 0) {
-        let remChars = textCursor;
-        let curY = y0 + paddingY;
-        let curX = x0 + paddingX;
-        let found = false;
-        
-        for (const line of visual._wrappedLines || []) {
-          if (remChars <= line.length) {
-            curX += textWidth(line.substring(0, remChars));
-            found = true;
-            break;
-          }
-          remChars -= line.length;
-          curY += lineHeightPx;
-        }
-        
-        if (found && curY + lineHeightPx > y0 && curY < y0 + h0) {
-          fill(color);
-          noStroke();
-          rect(curX, curY, 2, lineHeightPx);
-        }
-      }
-
-      // IME composition underline
-      if (compositionActive && compositionText) {
-        let remChars = textCursor;
-        let imeY = y0 + paddingY;
-        let imeX = x0 + paddingX;
-        let found = false;
-        
-        for (const line of visual._wrappedLines || []) {
-          if (remChars <= line.length) {
-            imeX += textWidth(line.substring(0, remChars));
-            found = true;
-            break;
-          }
-          remChars -= line.length;
-          imeY += lineHeightPx;
-        }
-        
-        if (found) {
-          const compWidth = textWidth(compositionText);
-          stroke(color);
-          strokeWeight(1);
-          line(
-            imeX,
-            imeY + lineHeightPx - 2,
-            imeX + compWidth,
-            imeY + lineHeightPx - 2
-          );
-        }
-      }
-    }
-  }
-
-  // Always draw edit border when active
-  if (activeTextEdit === textKey) {
-    push();
-    noFill();
-    stroke("limegreen");
-    strokeWeight(3);
-    rect(x0, y0, w0, h0);
-    pop();
-  }
-}
-
-        // ── FIN BLOQUE texto ───────────────────────────────────────────────
- //// IMAGE///////////////////////////////____________--------------------------------------
-        else if (visual.type === "image" && visual.img) {
-          const wCells = visual.w || 1;
-          const hCells = visual.h || 1;
-          const p10 = gridPoints[r][c + wCells];
-          const p01 = gridPoints[r + hCells][c];
-          if (!p10 || !p01) continue;
-
-          const scaleFactor = visual.scale || 1;
-          const offsetX = visual.offsetX || 0;
-          const offsetY = visual.offsetY || 0;
-
-          const imgW = p10.x - x;
-          const imgH = p01.y - y;
-
-          push();
-          translate(x + offsetX, y + offsetY);
-          scale(scaleFactor);
-          imageMode(CORNER);
-
-          if (visual.img instanceof p5.Image) {
-            image(visual.img, 0, 0, imgW, imgH);
-            
-            // Draw edit border if active
+      else if (visual.type === "image" && typeof visual.img === 'string') {
+        const wCells = visual.w || 1;
+        const hCells = visual.h || 1;
+        const p10 = gridPoints[r][c + wCells];
+        const p01 = gridPoints[r + hCells][c];
+        if (p10 && p01) {
+          const x0 = A.x;
+          const y0 = A.y;
+          const w0 = p10.x - x0;
+          const h0 = p01.y - y0;
+          loadImage(visual.img, (img) => {
+            push();
+            translate(x0, y0);
+            scale(visual.scale || 1);
+            imageMode(CORNER);
+            image(img, 0, 0, w0, h0);
             if (activeImageEdit === key) {
               noFill();
               stroke("limegreen");
               strokeWeight(2);
-              rect(0, 0, imgW, imgH);
+              rect(0, 0, w0, h0);
             }
-          } else {
-            // Error state - invalid image
-            noFill();
-            stroke("red");
-            strokeWeight(1);
-            rect(0, 0, imgW, imgH);
-            textSize(12);
-            textAlign(CENTER, CENTER);
-            fill("red");
-            text("Invalid image", imgW / 2, imgH / 2);
-          }
+            pop();
+          });
+          visual.w = wCells;
+          visual.h = hCells;
+        }
+      }
+      else if (visual.type === "shape" && visual.shape) {
+        const wCells = visual.w || 1;
+        const hCells = visual.h || 1;
+        const p10 = gridPoints[r][c + wCells];
+        const p01 = gridPoints[r + hCells][c];
+        if (p10 && p01) {
+          const x0 = A.x;
+          const y0 = A.y;
+          const w0 = p10.x - x0;
+          const h0 = p01.y - y0;
+          const s = visual.shape;
+          push();
+          translate(x0, y0);
+          drawShape(w0, h0, s.shapeType, s.fillColor, s.strokeColor, s.size, r, c, activeLayer.visuals);
           pop();
+          visual.w = wCells;
+          visual.h = hCells;
         }
       }
     }
   }
-
-  // Feedback de imagen activa
-  if (activeTool === "image" && imageStartCell) {
-    const col1 = imageStartCell.col;
-    const row1 = imageStartCell.row;
-    const col2 = getColFromX(mouseX);
-    const row2 = getRowFromY(mouseY);
-    if (col2 !== null && row2 !== null) {
-      const colStart = min(col1, col2);
-      const rowStart = min(row1, row2);
-      const colEnd = max(col1, col2);
-      const rowEnd = max(row1, row2);
-
-      const p00 = gridPoints[rowStart][colStart];
-      const p10 = gridPoints[rowStart][colEnd + 1];
-      const p01 = gridPoints[rowEnd + 1][colStart];
-
-      noFill();
-      stroke("limegreen");
-      strokeWeight(1);
-      rect(p00.x, p00.y, p10.x - p00.x, p01.y - p00.y);
-    }
-  }
 }
-
-
 
 // --- Gradiente animado ---
 /**
@@ -1298,59 +1333,45 @@ function mouseDragged(event) {
   }
 }
 
-function computeGridPoints() {
-  gridPoints = rowPositions.map(y =>
-    columnPositions.map(x => ({ x, y }))
-  );
-}
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // mouseReleased: Manejo de soltar para texto, imágenes y limpieza general
 // ─────────────────────────────────────────────────────────────────────────────
 function mouseReleased() {
-  // 0) Evitar clics sobre UI
   if (isMouseOverUI()) {
     console.log("🛑 Mouse release sobre UI, cancelando flujo");
     imageStartCell = null;
-    textStartCell  = null;
+    textStartCell = null;
     return;
   }
 
-  // 1) Depuración básica
   console.log("mouseReleased ejecutado");
   console.log("🔍 activeTool:", activeTool);
   console.log("🔍 imageStartCell:", imageStartCell);
   console.log("🔍 textStartCell:", textStartCell);
 
-  // 2) Si Shift+clic en herramienta “image”, solo seleccionar, no crear
   if (activeTool === "image" && keyIsDown(SHIFT)) {
     return;
   }
 
-  // 3) Limpiar arrastres y guardar estado
   draggingHandle = null;
-  draggingLine   = null;
-  draggingType   = null;
-  lastCellKey    = null;
+  draggingLine = null;
+  draggingType = null;
+  lastCellKey = null;
 
   saveVisuals();
   saveGridConfig();
   updateActiveImagesPanel();
-  
 
   if (justSelectedImage) {
     justSelectedImage = false;
     return;
   }
 
-  // Métricas de la cuadrícula (cellW, cellH)
   const { cellW, cellH } = getGridMetrics();
 
-  // 4) LÓGICA DE TEXTO: crear o editar bloque “Type here”
   if (activeTool === "text" && textStartCell) {
     console.log("  → Entré en mouseReleased para herramienta text");
-    // 4.a) Determinar celda final
     const col2 = getColFromX(mouseX);
     const row2 = getRowFromY(mouseY);
     console.log("  → col2, row2:", col2, row2);
@@ -1363,19 +1384,17 @@ function mouseReleased() {
       return;
     }
 
-    // 4.b) Calcular rectángulo en celdas
-    const col1     = textStartCell.col;
-    const row1     = textStartCell.row;
-    const maxCol   = columnPositions.length - 2;
-    const maxRow   = rowPositions.length - 2;
+    const col1 = textStartCell.col;
+    const row1 = textStartCell.row;
+    const maxCol = columnPositions.length - 2;
+    const maxRow = rowPositions.length - 2;
     const colStart = constrain(Math.min(col1, col2), 0, maxCol);
     const rowStart = constrain(Math.min(row1, row2), 0, maxRow);
-    const colEnd   = constrain(Math.max(col1, col2), 0, maxCol);
-    const rowEnd   = constrain(Math.max(row1, row2), 0, maxRow);
+    const colEnd = constrain(Math.max(col1, col2), 0, maxCol);
+    const rowEnd = constrain(Math.max(row1, row2), 0, maxRow);
     console.log("  → área celdas:", rowStart, colStart, "a", rowEnd, colEnd);
 
-    // 4.c) Obtener puntos en píxeles
-    const A   = gridPoints[rowStart][colStart];
+    const A = gridPoints[rowStart][colStart];
     const P10 = gridPoints[rowStart][colEnd + 1];
     const P01 = gridPoints[rowEnd + 1][colStart];
     if (!A || !P10 || !P01) {
@@ -1383,8 +1402,7 @@ function mouseReleased() {
       return;
     }
 
-    // 4.d) Calcular ancho/alto en px y descartar si demasiado pequeño
-    const widthPx  = P10.x - A.x;
+    const widthPx = P10.x - A.x;
     const heightPx = P01.y - A.y;
     console.log("  → dimensiones px:", widthPx, heightPx);
     if (widthPx < 10 || heightPx < 10) {
@@ -1392,16 +1410,14 @@ function mouseReleased() {
       return;
     }
 
-    const key     = `${rowStart}-${colStart}`;
+    const key = `${rowStart}-${colStart}`;
     const visuals = window.activeLayer.visuals;
 
-    // 4.e) Si ya existía un bloque de texto, pasamos a editar:
     if (visuals[key] && visuals[key].type === "text") {
       const visual = visuals[key];
-      activeTextEdit  = key;
+      activeTextEdit = key;
       mouseDownOnText = false;
 
-      // Reutilizamos el tamaño guardado (_widthPx, _heightPx)
       const w = visual._widthPx;
       const h = visual._heightPx;
 
@@ -1410,11 +1426,10 @@ function mouseReleased() {
       return;
     }
 
-    // 4.f) Si no existía, creamos un nuevo bloque de texto “Type here”:
     visuals[key] = {
       type: "text",
-      w:  colEnd - colStart + 1,
-      h:  rowEnd - rowStart + 1,
+      w: colEnd - colStart + 1,
+      h: rowEnd - rowStart + 1,
       text: {
         content: "type",
         font: textSettings.font,
@@ -1428,16 +1443,13 @@ function mouseReleased() {
       _y0: A.y,
       _widthPx: widthPx,
       _heightPx: heightPx,
-      //_paddingX: cellW * 0.05,   // 5% de padding
-      //_paddingY: cellH * 0.05,
       _lineHeightPx: cellH * (textSettings.lineHeight || 1.2)
     };
 
-    // 4.g) Guardamos información de layout en “visual”
     const visual = visuals[key];
-    visual._x0       = A.x;
-    visual._y0       = A.y;
-    visual._widthPx  = widthPx;
+    visual._x0 = A.x;
+    visual._y0 = A.y;
+    visual._widthPx = widthPx;
     visual._heightPx = heightPx;
     visual._paddingX = cellW * 0.05;
     visual._paddingY = cellH * 0.05;
@@ -1446,7 +1458,6 @@ function mouseReleased() {
       (heightPx - 2 * visual._paddingY) / visual._lineHeightPx
     );
 
-    // 4.h) Preparamos el wrap inicial (texto vacío)
     {
       const ctx = drawingContext;
       ctx.font = `${visual.text.size}px ${visual.text.font}`;
@@ -1456,21 +1467,20 @@ function mouseReleased() {
         visual._widthPx - 2 * visual._paddingX,
         visual._maxLines,
         visual._lineHeightPx,
-        /*hyphenate=*/ true
+        true
       );
     }
 
-    // 4.i) Marcamos que estamos editando y abrimos el textarea
-    activeTextEdit  = key;
+    activeTextEdit = key;
     mouseDownOnText = false;
-    textStartCell   = null;
+    textStartCell = null;
 
     startTextEditing(key, A.x, A.y, widthPx, heightPx, visual);
     isSelectingText = false;
+    saveVisuals(); // Trigger Firestore save
     return;
   }
 
-  // 5) LÓGICA DE IMAGEN: crear nueva imagen si corresponde
   if (activeTool === "image" && imageStartCell && uploadedImageReady) {
     const col2 = getColFromX(mouseX);
     const row2 = getRowFromY(mouseY);
@@ -1483,81 +1493,116 @@ function mouseReleased() {
     const col1 = imageStartCell.col;
     const row1 = imageStartCell.row;
     const colStart = min(col1, col2);
-    const rowStart = min(row1, row2);
-    const colEnd   = max(col1, col2);
-    const rowEnd   = max(row1, row2);
-    const key      = `${rowStart}-${colStart}`;
-    const visuals  = window.activeLayer.visuals;
-
-    console.log("🖼 GUARDANDO VISUAL IMAGE:", {
-      x: colStart,
-      y: rowStart,
-      w: colEnd - colStart + 1,
-      h: rowEnd - rowStart + 1,
-      img: uploadedImage,
-    });
-
-    visuals[key] = {
-      type: "image",
-      x: colStart,
-      y: rowStart,
-      w: colEnd - colStart + 1,
-      h: rowEnd - rowStart + 1,
-      img: uploadedImage,
-      offsetX: 0,
-      offsetY: 0,
-      scale: 1
-    };
-
-    activeImageEdit     = key;
-    imageStartCell      = null;
-    uploadedImage       = null;
-    uploadedImageReady  = true;
-
-    if (imageScaleSlider) {
-      imageScaleSlider.value = visuals[key].scale || 1;
-      imageScaleValue.textContent = (visuals[key].scale || 1).toFixed(1);
-    }
-
-    selectImageVisual(key);
-    return;
+    // ... (rest of image logic remains unchanged)
+    saveVisuals(); // Trigger Firestore save after image placement
   }
-
-  // 6) Shift+clic en herramienta “image” solo selecciona, no crear
-  if (activeTool === "image" && keyIsDown(SHIFT)) {
-    return;
-  }
-
-  // 7) Resto de flujos para otras herramientas: limpiar textStartCell
-  isSelectingText = false;
-  textStartCell = null;
-  
 }
-
-
 /**
  * Serializes visuals (turning any p5.Image into a data-URL)
  * and writes them to localStorage under `modulariem-<seed>`.
  */
-function saveVisuals() {
-  const out = {};
-  Object.entries(visuals).forEach(([key, v]) => {
-    // shallow-clone the visual
-    const clone = { ...v };
+/**
+ * Saves layers and grid config to Firestore
+ */
+/**
+ * Saves layers and grid config to Firestore, cleaning unsupported objects
+ */
+/**
+ * Saves layers and grid config to Firestore, cleaning unsupported objects and handling undefined
+ */
 
-    if (v.img) {
-      // draw the p5.Image into an offscreen graphics so we can toDataURL()
-      const g = createGraphics(v.img.width, v.img.height);
-      g.image(v.img, 0, 0);
-      clone.img = g.canvas.toDataURL();
-    }
+/**
+ * Cleans a visual object by removing unsupported fields and handling undefined
+ * @param {Object} visual - The visual object to clean
+ * @returns {Object} - A cleaned visual object
+ */
+function cleanVisual(visual) {
+  const cleanVisual = {};
+  if (!visual) return cleanVisual;
 
-    out[key] = clone;
-  });
+  // Set type if undefined
+  cleanVisual.type = visual.type || "empty";
 
- // localStorage.setItem(`modulariem-${seed}`, JSON.stringify(out));
+  // Handle specific visual types
+  switch (cleanVisual.type) {
+    case "gradient":
+      cleanVisual.colors = visual.colors || ["#ffffff", "#888888", "#000000"];
+      cleanVisual.offset = visual.offset !== undefined ? visual.offset : 0;
+      break;
+    case "text":
+      cleanVisual.w = visual.w || 1;
+      cleanVisual.h = visual.h || 1;
+      cleanVisual.text = {
+        content: visual.text?.content || "type",
+        font: visual.text?.font || "sans-serif",
+        size: visual.text?.size || 20,
+        color: visual.text?.color || "#000000",
+        lineHeight: visual.text?.lineHeight || 24,
+        letterSpacing: visual.text?.letterSpacing || 0,
+        align: visual.text?.align || "left"
+      };
+      break;
+    case "image":
+      cleanVisual.w = visual.w || 1;
+      cleanVisual.h = visual.h || 1;
+      cleanVisual.img = typeof visual.img === 'string' ? visual.img : undefined;
+      cleanVisual.scale = visual.scale || 1;
+      cleanVisual.offsetX = visual.offsetX || 0;
+      cleanVisual.offsetY = visual.offsetY || 0;
+      break;
+    case "shape":
+      cleanVisual.w = visual.w || 1;
+      cleanVisual.h = visual.h || 1;
+      cleanVisual.shape = {
+        shapeType: visual.shape?.shapeType || "circle",
+        fillColor: visual.shape?.fillColor || "#ff0000",
+        strokeColor: visual.shape?.strokeColor || "#000000",
+        size: visual.shape?.size || 20,
+        rotation: visual.shape?.rotation || 0
+      };
+      break;
+  }
+
+  // Remove unsupported or temporary fields
+  if (cleanVisual.pg) delete cleanVisual.pg;
+  if (cleanVisual._wrappedLines) delete cleanVisual._wrappedLines;
+  if (cleanVisual._paddingX) delete cleanVisual._paddingX;
+  if (cleanVisual._paddingY) delete cleanVisual._paddingY;
+  if (cleanVisual._lineHeightPx) delete cleanVisual._lineHeightPx;
+  if (cleanVisual._fontSize) delete cleanVisual._fontSize;
+  if (cleanVisual._x0) delete cleanVisual._x0;
+  if (cleanVisual._y0) delete cleanVisual._y0;
+  if (cleanVisual._widthPx) delete cleanVisual._widthPx;
+  if (cleanVisual._heightPx) delete cleanVisual._heightPx;
+
+  return cleanVisual;
 }
 
+/**
+ * Cleans a visual object by removing unsupported fields
+ * @param {Object} visual - The visual object to clean
+ * @returns {Object} - A cleaned visual object
+ */
+function cleanVisual(visual) {
+  const cleanVisual = { ...visual };
+  // Remove p5.Graphics (pg) and p5.Image (img as p5.Image) objects
+  if (cleanVisual.pg) delete cleanVisual.pg;
+  if (cleanVisual.img && !(typeof cleanVisual.img === 'string')) {
+    console.warn(`Image at ${visual} is a p5.Image, not saved. Use a URL instead.`);
+    delete cleanVisual.img;
+  }
+  // Remove temporary rendering data
+  if (cleanVisual._wrappedLines) delete cleanVisual._wrappedLines;
+  if (cleanVisual._paddingX) delete cleanVisual._paddingX;
+  if (cleanVisual._paddingY) delete cleanVisual._paddingY;
+  if (cleanVisual._lineHeightPx) delete cleanVisual._lineHeightPx;
+  if (cleanVisual._fontSize) delete cleanVisual._fontSize;
+  if (cleanVisual._x0) delete cleanVisual._x0;
+  if (cleanVisual._y0) delete cleanVisual._y0;
+  if (cleanVisual._widthPx) delete cleanVisual._widthPx;
+  if (cleanVisual._heightPx) delete cleanVisual._heightPx;
+  return cleanVisual;
+}
 
 
 // --- Dibujar en la celda bajo el ratón ---
@@ -1590,6 +1635,7 @@ function _pointInQuad(px, py, p00, p10, p11, p01) {
 // ——————— The fixed drawOnCellUnderMouse() ———————
 
 function drawOnCellUnderMouse() {
+  if (MODE === 'view') return;
   if (!window.activeLayer) return;
   const visuals = window.activeLayer.visuals;
 
@@ -1691,40 +1737,56 @@ function drawOnCellUnderMouse() {
 // --- Obtener métricas del grid ---
 // 1) Métricas: ancho/alto de celda descontando márgenes
 function getGridMetrics() {
-  const rows = parseInt(sliders.rows.value(), 10);
-  const cols = parseInt(sliders.columns.value(), 10);
-  if (rows < 1 || cols < 1) return {};
-
-  const cellW = width  / cols;
-  const cellH = height / rows;
-
-  return { rows, cols, cellW, cellH };
+  let rows = 2, cols = 2, margin = 10;
+  if (MODE !== 'view' && sliders.rows && sliders.columns) {
+    rows = parseInt(sliders.rows.value(), 10) || 2;
+    cols = parseInt(sliders.columns.value(), 10) || 2;
+  } else if (window.layers[0]?.gridConfig) {
+    rows = window.layers[0].gridConfig.rows || 2;
+    cols = window.layers[0].gridConfig.cols || 2;
+  }
+  const cellW = (width - margin * (cols + 1)) / cols;
+  const cellH = (height - margin * (rows + 1)) / rows;
+  return { rows, cols, margin, cellW, cellH };
 }
-
-
 // 2) Recalcula columnPositions / rowPositions  
 function updateGridPositions() {
-  const gm = getGridMetrics();
-  if (!gm.rows) return;
-  const { rows, cols, cellW, cellH } = gm;
+  const rows = parseInt(sliders.rows?.value() || 2, 10);
+  const cols = parseInt(sliders.columns?.value() || 2, 10);
+  const w = width;
+  const h = height;
 
   columnPositions = [];
-  for (let c = 0; c <= cols; c++) {
-    columnPositions.push(c * cellW);
-  }
-
   rowPositions = [];
+  gridPoints = [];
+
+  for (let c = 0; c <= cols; c++) {
+    columnPositions[c] = (c / cols) * w;
+  }
   for (let r = 0; r <= rows; r++) {
-    rowPositions.push(r * cellH);
+    rowPositions[r] = (r / rows) * h;
   }
 
-  computeGridPoints();
+  for (let r = 0; r <= rows; r++) {
+    gridPoints[r] = [];
+    for (let c = 0; c <= cols; c++) {
+      gridPoints[r][c] = { x: columnPositions[c], y: rowPositions[r] };
+    }
+  }
+
+  markChanges();
+  debounceSaveToFirestore();
+}
+
+function computeGridPoints() {
+  gridPoints = rowPositions.map(y => columnPositions.map(x => ({ x, y })));
 }
 
 
 
 // --- Dibujar handles del grid ---
 function drawGridHandles() {
+  if (MODE === 'view') return;
   if (!editingGrid) return;      // solo en modo edición
   fill('#add8e6');               // azul claro
   stroke(0);                     // negro
@@ -1742,6 +1804,10 @@ function drawGridHandles() {
 
 // --- Configuración de Grid Editing ---
 function setupGridEditingLogic() {
+  if (MODE !== 'edit') {
+    console.log('this is is an editing function');
+    return;
+  }
   document.getElementById('editGridButton').addEventListener('click', function() {
     editingGrid = !editingGrid;
     this.innerText = editingGrid ? "edit grid: ON" : "edit grid: OFF";
@@ -1756,6 +1822,7 @@ function setupGridEditingLogic() {
   sliders.columns.input(updateGridPositions);
 }
 function drawTexture(w,h,settings) {
+  if (MODE === 'view') return;
   const { type, density } = settings;
   const count = density*10;
   noFill(); stroke(0,30);
@@ -1790,6 +1857,7 @@ function drawTexture(w,h,settings) {
 //SHAPES
 
 function drawShape(w, h, shapeType = "circle", fillColor = '#000000', strokeColor = '#ffffff', size = 100, r = 0, c = 0, visuals = {}) {
+  if (MODE === 'view') return;
   const scale = constrain(size / 100, 0, 1);
   const baseR = min(w, h) * 0.5 * scale;
   const rotationRad = 0;
@@ -1839,6 +1907,7 @@ function drawShape(w, h, shapeType = "circle", fillColor = '#000000', strokeColo
 //shapes: STAR
 
 function drawStarConnected(w, h, r, neighbors, fillColor, strokeColor, points = 5) {
+  if (MODE === 'view') return;
   fill(fillColor);
   stroke(strokeColor);
   strokeWeight(1);
@@ -1882,6 +1951,7 @@ function smoothEdge(angle, targetDeg, width = 30) {
 
 
 function drawOrganicConnected(w, h, r, neighbors, fillColor, strokeColor) {
+  if (MODE === 'view') return;
   fill(fillColor);
   stroke(strokeColor);
   strokeWeight(1);
@@ -1921,6 +1991,7 @@ function drawOrganicConnected(w, h, r, neighbors, fillColor, strokeColor) {
 
 //shapes: CIRCLE
 function drawCircleConnected(w, h, r, neighbors, fillColor, strokeColor) {
+  if (MODE === 'view') return;
   const steps = 80;
   fill(fillColor);
   stroke(strokeColor);
@@ -1948,6 +2019,7 @@ function drawCircleConnected(w, h, r, neighbors, fillColor, strokeColor) {
 //SHAPES: SQUARE
 
 function drawSquareConnected(w, h, r, neighbors, fillColor, strokeColor) {
+  if (MODE === 'view') return;
   const stepsPerSide = 20;
   const steps = stepsPerSide * 4;
   fill(fillColor);
@@ -2004,6 +2076,10 @@ function updateLastShapeSettingsLive() {
 }  
 // --- UI SETUP FUNCTIONS ---
 function setupSliderFeedback(selector = '.grid-sliders label') {
+  if (MODE !== 'edit') {
+    console.log('this is is an editing function');
+    return;
+  }
   const labels = document.querySelectorAll(selector);
   labels.forEach(label => {
     const slider = label.querySelector('input[type="range"]');
@@ -2027,6 +2103,10 @@ function setupSliderFeedback(selector = '.grid-sliders label') {
   });
 }
 function setupToolLogic() {
+  if (MODE !== 'edit') {
+    console.log('this is is an editing function');
+    return;
+  }
   const buttons = document.querySelectorAll('.tool-btn');
 
   const toolNames = {
@@ -2071,22 +2151,46 @@ function setupToolLogic() {
 
 
 function setupUnifyButton() {
+  if (MODE !== 'edit') {
+    console.log('Unify button setup skipped in view mode');
+    return;
+  }
   const btn = document.getElementById('unify-btn');
-  btn.addEventListener('click', ()=>{
+  if (!btn) {
+    console.warn('Unify button not found, deferring setup');
+    setTimeout(() => {
+      const delayedBtn = document.getElementById('unify-btn');
+      if (delayedBtn) {
+        delayedBtn.addEventListener('click', () => {
+          useUnifiedOffset = !useUnifiedOffset;
+          globalOffset = random(0, 1000);
+          delayedBtn.textContent = useUnifiedOffset ? '=' : '~';
+          delayedBtn.style.backgroundColor = useUnifiedOffset ? 'black' : 'white';
+          delayedBtn.style.color = useUnifiedOffset ? 'white' : 'black';
+        });
+        console.log('Unify button setup completed after delay');
+      } else {
+        console.error('Unify button still not found after delay');
+      }
+    }, 100);
+    return;
+  }
+  btn.addEventListener('click', () => {
     useUnifiedOffset = !useUnifiedOffset;
-    globalOffset = random(0,1000);
-    btn.textContent = useUnifiedOffset?'=':'~';
-    btn.style.backgroundColor = useUnifiedOffset?'black':'white';
-    btn.style.color = useUnifiedOffset?'white':'black';
+    globalOffset = random(0, 1000);
+    btn.textContent = useUnifiedOffset ? '=' : '~';
+    btn.style.backgroundColor = useUnifiedOffset ? 'black' : 'white';
+    btn.style.color = useUnifiedOffset ? 'white' : 'black';
   });
 }
 
+
 //POP UP DRAGGABLE 
 function makePopupDraggable(popup) {
+  if (!popup) return;
   const header = popup.querySelector('.popup-header');
   if (!header) return;
 
-  // ⬆️ Subir al frente al hacer clic en cualquier parte del popup
   popup.addEventListener('mousedown', () => {
     popup.style.zIndex = ++topZIndex;
   });
@@ -2098,8 +2202,7 @@ function makePopupDraggable(popup) {
   header.addEventListener('mousedown', (e) => {
     isDragging = true;
     header.style.cursor = 'grabbing';
-
-    popup.style.zIndex = ++topZIndex; // también aquí por seguridad
+    popup.style.zIndex = ++topZIndex;
 
     const rect = popup.getBoundingClientRect();
     popup.style.position = 'fixed';
@@ -2116,14 +2219,7 @@ function makePopupDraggable(popup) {
 
 
   function onMouseMove(e) {
-    function mouseDragged() {
-      if (isMouseOverUI()) return;
-    
-      // tu lógica actual para dibujar o arrastrar
-    }
-    
     if (!isDragging) return;
-
 
     let newLeft = e.clientX - offsetX;
     let newTop = e.clientY - offsetY;
@@ -2139,50 +2235,44 @@ function makePopupDraggable(popup) {
     popup.style.left = `${newLeft}px`;
     popup.style.top = `${newTop}px`;
   }
-
+  
   function onMouseUp() {
     if (!isDragging) return;
     isDragging = false;
     header.style.cursor = 'grab';
-  
+
     const popupRect = popup.getBoundingClientRect();
     const margin = 6;
-    const snapRange = 30; // 👈 mucho más notorio que 10
+    const snapRange = 30;
 
     activePopups.forEach(other => {
       if (other === popup) return;
       const otherRect = other.getBoundingClientRect();
-    
-      // Snap derecha del otro
+
       if (Math.abs(popupRect.left - (otherRect.right + margin)) < snapRange) {
         popup.style.left = `${otherRect.right + margin}px`;
         popup.style.top = `${otherRect.top}px`;
       }
-    
-      // Snap izquierda del otro
+
       if (Math.abs(popupRect.right - (otherRect.left - margin)) < snapRange) {
         popup.style.left = `${otherRect.left - popup.offsetWidth - margin}px`;
         popup.style.top = `${otherRect.top}px`;
       }
-    
-      // Snap misma izquierda
+
       if (Math.abs(popupRect.left - otherRect.left) < snapRange) {
         popup.style.left = `${otherRect.left}px`;
       }
-    
-      // Snap misma derecha
+
       if (Math.abs(popupRect.right - otherRect.right) < snapRange) {
         popup.style.left = `${otherRect.right - popup.offsetWidth}px`;
       }
-    
-      // Snap misma top
+
       if (Math.abs(popupRect.top - otherRect.top) < snapRange) {
         popup.style.top = `${otherRect.top}px`;
       }
     });
-    
   }
-  
+
   document.addEventListener('mousemove', onMouseMove);
   document.addEventListener('mouseup', onMouseUp);
 }
@@ -2194,6 +2284,10 @@ function makePopupDraggable(popup) {
 //OPENING POP UP INFORMATION 
 
 function setupInfoPopup() {
+  if (MODE !== 'edit') {
+    console.log('this is is an editing function');
+    return;
+  }
   const popup = document.getElementById('info-popup');
   const closeBtn = popup.querySelector('.popup-close');
   const infoBtn = document.getElementById('info-btn');
@@ -2233,32 +2327,72 @@ makePopupDraggable(document.getElementById('palette'));
 
 //TIPPY
 
-tippy('[data-tippy-content]', {
-  theme: 'modulariem',
-  animation: 'scale',
-  duration: [200, 150],
-  placement: 'top',
-});
 
 
+if (MODE === 'edit' && typeof tippy !== 'undefined') {
+  tippy('[data-tippy-content]', {
+    theme: 'modulariem',
+    animation: 'scale',
+    duration: [200, 150],
+    placement: 'top',
+  });
+} else {
+  if (MODE !== 'edit') {
+    console.log('Tooltips skipped in view mode');
+  } else {
+    console.warn('tippy.js is not loaded, tooltips will not work');
+  }
+}
 function setupGradientColorInputs() {
-  document.getElementById("gradient-color-1").addEventListener("input", e => {
-    gradientColors[0] = e.target.value;
-  });
-  document.getElementById("gradient-color-2").addEventListener("input", e => {
-    gradientColors[1] = e.target.value;
-  });
-  document.getElementById("gradient-color-3").addEventListener("input", e => {
-    gradientColors[2] = e.target.value;
-  });
+  if (MODE !== 'edit') {
+    console.log('this is is an editing function');
+    return;
+  }
+  const color1 = document.getElementById("gradient-color-1");
+  const color2 = document.getElementById("gradient-color-2");
+  const color3 = document.getElementById("gradient-color-3");
+  if (color1) {
+    color1.addEventListener("input", e => {
+      gradientColors[0] = e.target.value;
+      markChanges();
+      debounceSaveToFirestore();
+    });
+  }
+  if (color2) {
+    color2.addEventListener("input", e => {
+      gradientColors[1] = e.target.value;
+      markChanges();
+      debounceSaveToFirestore();
+    });
+  }
+  if (color3) {
+    color3.addEventListener("input", e => {
+      gradientColors[2] = e.target.value;
+      markChanges();
+      debounceSaveToFirestore();
+    });
+  }
 }
 
 
-document.getElementById("text-font").addEventListener("change", e => {
-  textSettings.font = e.target.value;
-});
+const fontElement = document.getElementById("text-font");
+if (MODE === 'edit' && fontElement) {
+  fontElement.addEventListener("change", e => {
+    textSettings.font = e.target.value;
+    markChanges();
+    debounceSaveToFirestore();
+  });
+} else if (MODE !== 'edit') {
+  console.log('Text font change setup skipped in view mode');
+} else {
+  console.warn('text-font element not found in edit mode');
+}
 
 document.getElementById("text-size").addEventListener("input", e => {
+  if (MODE !== 'edit') {
+    console.log('this is is an editing function');
+    return;
+  }
   // El usuario escribe directamente el font-size en px:
   const v = parseInt(e.target.value, 10);
   if (!isNaN(v) && v > 0) {
@@ -2267,6 +2401,10 @@ document.getElementById("text-size").addEventListener("input", e => {
 });
 
 document.getElementById("text-lineheight").addEventListener("input", e => {
+  if (MODE !== 'edit') {
+    console.log('this is is an editing function');
+    return;
+  }
   // Interpretamos el valor como px absolutos de leading:
   const v = parseInt(e.target.value, 10);
   if (!isNaN(v) && v > 0) {
@@ -2275,6 +2413,10 @@ document.getElementById("text-lineheight").addEventListener("input", e => {
 });
 
 document.getElementById("text-kerning").addEventListener("input", e => {
+  if (MODE !== 'edit') {
+    console.log('this is is an editing function');
+    return;
+  }
   textSettings.letterSpacing = parseFloat(e.target.value);
 });
 
@@ -2282,6 +2424,10 @@ document.getElementById("add-layer").addEventListener("click", createLayer);
 
 
 function updateAllTextBlocks() {
+  if (MODE !== 'edit') {
+    console.log('this is is an editing function');
+    return;
+  }
   const visuals = window.activeLayer.visuals; // <--- importante
 
   Object.keys(visuals).forEach(key => {
@@ -2442,6 +2588,10 @@ redraw();
 //IMAGE UPLOADER
 
 function setupImageUpload() {
+  if (MODE !== 'edit') {
+    console.log('this is is an editing function');
+    return;
+  }
   const fileInput = document.getElementById("image-file-input");
   const selectBtn = document.getElementById("select-image-btn");
   const dropzone  = document.getElementById("image-dropzone");
@@ -2588,10 +2738,13 @@ if (imageScaleSlider) {
 }
 
 function updateActiveImagesPanel() {
-  const visuals = window.activeLayer.visuals; // <--- IMPORTANTE
+  if (MODE !== 'edit') return;
   const panel = document.getElementById("active-images");
-  panel.innerHTML = ""; // Limpia
+  if (!panel) return;
 
+  panel.innerHTML = "";
+
+  const visuals = window.activeLayer?.visuals || {};
   for (const key in visuals) {
     const visual = visuals[key];
     if (visual.type === "image" && visual.img instanceof p5.Image) {
@@ -2615,26 +2768,20 @@ function updateActiveImagesPanel() {
       deleteBtn.onclick = () => {
         delete visuals[key];
         if (activeImageEdit === key) activeImageEdit = null;
-      
-        // Limpiar slider si era la imagen activa
+
         const imageScaleSlider = document.getElementById("scale-slider");
         if (imageScaleSlider) {
           imageScaleSlider.value = 1;
         }
-      
-        // Actualizar el panel
+
         updateActiveImagesPanel();
-      
-        // Redibujar
         redraw();
+        saveVisuals();
       };
-      
 
       thumb.style.cursor = "pointer";
       thumb.onclick = () => {
         activeImageEdit = key;
-
-        // Actualiza el slider
         const imageScaleSlider = document.getElementById("scale-slider");
         if (imageScaleSlider && visual.scale) {
           imageScaleSlider.value = visual.scale;
@@ -2647,8 +2794,6 @@ function updateActiveImagesPanel() {
     }
   }
 }
-
-
 // PANEL UI UPDATES 
 function isMouseOverUI() {
   const el = document.elementFromPoint(mouseX + window.scrollX, mouseY + window.scrollY);
@@ -2663,21 +2808,22 @@ function createLayer() {
     alert("Max 10 layers");
     return;
   }
-  
+
   const newLayer = {
     id: generateLayerID(),
     name: `Layer ${window.layers.length + 1}`,
-    type: "gradient", // Add default type
+    type: "gradient",
     color: randomColorFromNeonPalette(),
     visible: true,
     visuals: {}
   };
-  
+
   window.layers.push(newLayer);
   window.activeLayer = newLayer;
-  // ADD THIS LINE to verify:
   console.log(">> After createLayer, layers =", window.layers.map(l => l.name));
   renderLayersUI();
+  markChanges();
+  debounceSaveToFirestore();
 }
 
 
@@ -2699,9 +2845,12 @@ function selectToolButton(toolType) {
 
 
 function renderLayersUI() {
-  if (MODE !== 'edit') return; 
+  if (MODE !== 'edit') return;
   const list = document.getElementById("layers-list");
-  if (!list) return;  
+  if (!list) {
+    console.error("Layers list element not found");
+    return;
+  }
   list.innerHTML = "";
 
   window.layers.forEach((layer, index) => {
@@ -2713,103 +2862,105 @@ function renderLayersUI() {
     div.style.display = "flex";
     div.style.alignItems = "center";
     div.style.justifyContent = "space-between";
+    div.style.cursor = "pointer";
     div.dataset.layerId = layer.id;
 
     const name = document.createElement("input");
     name.type = "text";
     name.value = layer.name;
     name.className = "layer-name";
-    name.oninput = () => { layer.name = name.value; };
+    name.style.flex = "1";
+    name.oninput = () => {
+      layer.name = name.value;
+
+      redraw();
+    };
 
     const upBtn = document.createElement("button");
     upBtn.innerText = "↑";
     upBtn.onclick = (e) => {
       e.stopPropagation();
       if (index > 0) {
-        [window.layers[index-1], window.layers[index]] = 
-          [window.layers[index], window.layers[index-1]];
+        [window.layers[index-1], window.layers[index]] = [window.layers[index], window.layers[index-1]];
         renderLayersUI();
+  
+        redraw();
       }
     };
 
     const downBtn = document.createElement("button");
     downBtn.innerText = "↓";
-    downBtn.onclick = () => {
+    downBtn.onclick = (e) => {
+      e.stopPropagation();
       if (index < window.layers.length - 1) {
         [window.layers[index + 1], window.layers[index]] = [window.layers[index], window.layers[index + 1]];
         renderLayersUI();
+        redraw();
       }
     };
-
-    //visibility of the layer 
 
     const visibleBtn = document.createElement("button");
     visibleBtn.innerHTML = layer.visible ? "👁️" : "👁️‍🗨️";
     visibleBtn.onclick = (e) => {
-    e.stopPropagation();
-    layer.visible = !layer.visible;
-    renderLayersUI();
-  };
+      e.stopPropagation();
+      layer.visible = !layer.visible;
+      renderLayersUI();
+      redraw();
+    };
 
     const delBtn = document.createElement("button");
-delBtn.innerText = "✕";
-delBtn.onclick = () => {
-  window.layers.splice(index, 1);
-  // Si borras el activo, selecciona el primero, o null si ya no hay ninguno
-  if (window.activeLayer === layer) {
-    window.activeLayer = window.layers[0] || null;
-    // Si quieres, puedes resetear la herramienta al default
-    // window.activeTool = "gradient";
-    // selectToolButton("gradient");
-  }
-  renderLayersUI();
+    delBtn.innerText = "✕";
+    delBtn.onclick = (e) => {
+      e.stopPropagation();
+      window.layers.splice(index, 1);
+      if (window.activeLayer === layer) {
+        window.activeLayer = window.layers[0] || null;
+      }
+      renderLayersUI();
+      debounceSaveToFirestore();
+      redraw();
+      const addLayerBtn = document.getElementById("add-layer");
+      if (window.layers.length < 10 && addLayerBtn) {
+        addLayerBtn.disabled = false;
+      }
+    };
 
-  // (Opcional) Habilita el botón "+" si ahora hay menos de 10 capas
-  const addLayerBtn = document.getElementById("add-layer");
-  if (window.layers.length < 10 && addLayerBtn) {
-    addLayerBtn.disabled = false;
-  }
-};
+    div.onclick = () => {
+      window.activeLayer = layer;
+      console.log(`Selected layer: ${layer.name}`);
+      renderLayersUI();
+      redraw();
+    };
 
-
-div.onclick = (e) => {
-  // Only select if clicking on the layer div itself, not buttons/inputs
-  if (e.target === div || e.target.classList.contains('layer-name')) {
-    window.activeLayer = layer;
-    renderLayersUI();
-  }
-};
-
-//MARCADOR DEL LAYER
-
-if (window.activeLayer === layer) {
-  div.style.outline = "2px solid #fff";
-  name.style.fontWeight = "lighter";
-  name.style.color = "#222";
-  div.insertAdjacentHTML('afterbegin', '<span style="margin-right:4px; color: rgb(208, 252, 118);">*</span>');
-} else {
-  name.style.fontWeight = "normal";
-  name.style.color = "";
-}
-
-//MARCADOR DEL LAYER 
-
+    if (window.activeLayer === layer) {
+      div.style.outline = "2px solid #fff";
+      div.style.boxShadow = "0 0 5px rgba(208, 252, 118, 0.8)";
+      name.style.fontWeight = "bold";
+      name.style.color = "#222";
+      div.insertAdjacentHTML('afterbegin', '<span style="margin-right:4px; color: rgb(208, 252, 118);">*</span>');
+    } else {
+      div.style.outline = "none";
+      div.style.boxShadow = "none";
+      name.style.fontWeight = "normal";
+      name.style.color = "";
+    }
 
     const controls = document.createElement("div");
+    controls.style.display = "flex";
+    controls.style.gap = "4px";
     controls.appendChild(upBtn);
     controls.appendChild(downBtn);
-    controls.appendChild(delBtn);
     controls.appendChild(visibleBtn);
+    controls.appendChild(delBtn);
 
     div.appendChild(name);
     div.appendChild(controls);
     list.appendChild(div);
   });
 
-const layerCount = document.getElementById("layer-count");
-if (layerCount) layerCount.textContent = `(${window.layers.length}/10)`;
+  const layerCount = document.getElementById("layer-count");
+  if (layerCount) layerCount.textContent = `(${window.layers.length}/10)`;
 }
-
 // --------- FUNCIONES EXTRA ---------
 
 function countLayersOfType(type) {
@@ -3223,140 +3374,6 @@ function paintWrappedText(
 //
 //
 //
-// ───────── Growth Overlay Primitives ─────────
-
-// Helper: convert RGB [0–255] → HSL [0–1]
-function rgbToHsl(r, g, b) {
-  r/=255; g/=255; b/=255;
-  const max = max3(r,g,b), min = min3(r,g,b), d = max-min,
-        l = (max+min)/2;
-  let h=0, s=0;
-  if (d!==0) {
-    s = d / (1 - abs(2*l-1));
-    switch(max) {
-      case r: h = ((g-b)/d + (g<b?6:0))/6; break;
-      case g: h = ((b-r)/d + 2)/6; break;
-      case b: h = ((r-g)/d + 4)/6; break;
-    }
-  }
-  return [h, s, l];
-}
-function hslToRgb(h, s, l) {
-  let r, g, b;
-  if (s===0) r=g=b=l;
-  else {
-    const q = l < 0.5 ? l*(1+s) : l+s-l*s;
-    const p = 2*l - q;
-    r = hue2rgb(p,q,h+1/3);
-    g = hue2rgb(p,q,h);
-    b = hue2rgb(p,q,h-1/3);
-  }
-  return [r*255, g*255, b*255];
-}
-function hue2rgb(p, q, t) {
-  if      (t<0) t+=1;
-  else if (t>1) t-=1;
-  if      (t<1/6) return p + (q-p)*6*t;
-  else if (t<1/2) return q;
-  else if (t<2/3) return p + (q-p)*(2/3-t)*6;
-  return p;
-}
-// convenience
-function max3(a,b,c){ return a>b?(a>c?a:c):(b>c?b:c); }
-function min3(a,b,c){ return a<b?(a<c?a:c):(b<c?b:c); }
-function abs(x){ return x<0?-x:x; }
-
-// 1) Vine Curl
-window.vineCurl = function(A, Ca, K) {
-  // This will modulate the existing shapes’ outlines.
-  // A.extrudePct→ how far to offset, A.distortion→ sine on those offsets,
-  //     A.branches→ how many splits if you’d subdivide a path,
-  //     A.hueAnimation→ cycle HSL on path
-  // Ca.* → crystalline spikes parameters
-  // K.* → ice fronds parameters
-  //
-  // For now, we’ll do a simple edge‐glow:
-  push();
-  blendMode(ADD);
-  filter(BLUR, A.bloom?.sigma || 4);
-  pop();
-  return this;
-};
-
-// 2) Chlorophyll Radiance
-window.chlorophyllRadiance = function(hueShift, satShift, bloomSigma, bloomIntensityScale, palette) {
-  loadPixels();
-  for (let i = 0; i < pixels.length; i += 4) {
-    let r = pixels[i], g = pixels[i+1], b = pixels[i+2];
-    let [h,s,l] = rgbToHsl(r,g,b);
-    // apply hue shift
-    h = (h + hueShift/360) % 1;
-    // apply saturation
-    if (satShift !== null) {
-      s = min3(1,1, s + satShift/100);
-    } else {
-      // oscillate
-      const t = (sin(millis()/1000 * TWO_PI /5)+1)/2;  // 5s cycle
-      s = map(t, 0,1, palette[0]/*low*/, palette[1]/*high*/);
-    }
-    [r,g,b] = hslToRgb(h,s,l);
-    pixels[i]   = r;
-    pixels[i+1] = g;
-    pixels[i+2] = b;
-  }
-  updatePixels();
-  // bloom glow
-  push();
-  blendMode(ADD);
-  filter(BLUR, bloomSigma);
-  pop();
-  return this;
-};
-
-// 3) Bloom Expansion
-window.bloomExpansion = function(clusterDetection, mode, extrusionPct, materialOpacity, tintOrGradient, fractal, subdivisions, displacementMethod, noise, pbrSettings) {
-  // We’ll overlay a semi‐transparent noise field
-  push();
-  noFill();
-  strokeWeight(1);
-  // scatter some fractal noise if requested
-  if (noise) {
-    for (let i=0; i<1000; i++) {
-      const x = random(width), y = random(height),
-            r = noise.scale * randomGaussian();
-      stroke(lerpColor(color(tintOrGradient[0]), color(tintOrGradient[1]||tintOrGradient[0]), random()));
-      point(x + noisePersistence(y,noise), y);
-    }
-  }
-  // tint
-  fill(tintOrGradient[0] || '#fff');
-  rect(0,0,width,height, 0);
-  pop();
-  return this;
-};
-
-// 4) Moss Mirage
-window.mossMirage = function(segmentation, mode, specklesPct, speckleRadiusPx, tintColors, blurSigma, patchGrouping, perlin, brightnessAnim) {
-  // paint neon speckles
-  push();
-  noStroke();
-  for (let i = 0; i < width*height*specklesPct/100; i++) {
-    fill(random(tintColors));
-    const x = random(width), y = random(height);
-    ellipse(x, y, speckleRadiusPx*2);
-  }
-  pop();
-  // blur into patches
-  if (blurSigma > 0) filter(BLUR, blurSigma);
-  // animate brightness
-  if (brightnessAnim) {
-    const v = map(sin(millis()/1000 * TWO_PI / brightnessAnim.period), -1,1, 0.8,1.2);
-    tint(255,255*v);
-  }
-  return this;
-};
-
-
 
 ////
 ///
@@ -3384,34 +3401,152 @@ window.mossMirage = function(segmentation, mode, specklesPct, speckleRadiusPx, t
  * then redraw the canvas exactly as the user created it.
  *
  /**
- * Reproduce en pantalla la composición original guardada en Firestore.
- @param {Object} seedData  - El documento .data() de Firestore, con al menos:
- *    • seedData.layers    Array de capas (tu estructura de “layers”)
- *    • (opcional) seedData.rows      número de filas de grid
- (opcional) seedData.columns   número de columnas de grid
+/**
+ * Load a saved seed composition into the sketch.
+ * @param {Object} data - The Firestore document data, containing:
+ *   - data.layers: Array of layer objects
+ *   - data.gridConfig: Object with rows and cols
  */
-window.loadSeed = function(seedData) {
-  // 1) Restaurar tamaño de grid si existe
-  if (typeof seedData.rows === 'number' && typeof seedData.columns === 'number') {
-    rows    = seedData.rows;
-    columns = seedData.columns;
-    updateGridPositions();
-    // si estás en modo edit (no view), mantén sliders sincronizados:
-    if (MODE === 'edit') {
-      select('input[name="rows"]').value(rows);
-      select('input[name="columns"]').value(columns);
+window.loadSeed = function(data) {
+  // 1) Grid
+  if (data.gridConfig) {
+    if (MODE !== 'view' && sliders.rows && sliders.columns && typeof sliders.rows.value === 'function' && typeof sliders.columns.value === 'function') {
+      sliders.rows.value(data.gridConfig.rows);
+      sliders.columns.value(data.gridConfig.cols);
     }
+    updateGridPositions();
   }
 
-  // 2) Restaurar capas
-  window.layers      = Array.isArray(seedData.layers) ? seedData.layers : [];
-  window.activeLayer = window.layers[0] || null;
-
-  // 3) En modo edit, refresca la UI
-  if (MODE === 'edit') {
-    renderLayersUI();
+  // 2) Layers
+  if (data.layers && Array.isArray(data.layers)) {
+    window.layers = data.layers.map(layer => {
+      if (!layer.visuals) layer.visuals = {};
+      return layer;
+    });
+    window.activeLayer = window.layers[0] || null;
+  } else {
+    window.layers = [{
+      id: generateLayerID(),
+      name: "Layer 1",
+      type: "gradient",
+      color: randomColorFromNeonPalette(),
+      visible: true,
+      visuals: {}
+    }];
+    window.activeLayer = window.layers[0];
   }
 
-  // 4) Y dibuja una única vez con esa semilla
-  redraw();  // recuerda haber llamado noLoop() en modo view
+  // 3) Update UI and canvas
+  if (MODE !== 'view' && typeof renderLayersUI === 'function') renderLayersUI();
+  if (typeof redraw === 'function') redraw();
+
+  console.log(`✅ Seed ${seed} loaded from layers`, window.layers);
 };
+
+///////GROW
+
+function setupGrowthIntegration() {
+  if (MODE === 'edit') {
+      const applyBtn = document.getElementById('applyGrowthBtn');
+      if (applyBtn) {
+          applyBtn.addEventListener('click', async () => {
+              const cfg = {
+                  sun: +sliders.sun.value() || 0,
+                  water: +sliders.water.value() || 0,
+                  vitamins: +sliders.vitamins.value() || 0,
+                  days: +sliders.days.value() || 0,
+                  startDate: new Date().toISOString()
+              };
+              try {
+                  const sanitizedLayers = window.layers.map(layer => ({
+                      id: layer.id || generateLayerID(),
+                      name: layer.name || `Layer ${window.layers.indexOf(layer) + 1}`,
+                      type: layer.type || 'gradient',
+                      color: layer.color || randomColorFromNeonPalette(),
+                      visible: typeof layer.visible === 'boolean' ? layer.visible : true,
+                      visuals: Object.keys(layer.visuals || {}).reduce((acc, key) => {
+                          let visual = { ...layer.visuals[key] };
+                          // Recursive sanitization
+                          function sanitizeObject(obj) {
+                              if (obj === null || typeof obj !== 'object') return obj;
+                              if (obj instanceof p5.Color) return obj.toString().replace(/ /g, '');
+                              if (obj instanceof p5.Graphics) return null;
+                              if (typeof obj === 'function') return undefined;
+                              const cleanObj = Array.isArray(obj) ? [] : {};
+                              for (let k in obj) {
+                                  if (Object.prototype.hasOwnProperty.call(obj, k)) {
+                                      cleanObj[k] = sanitizeObject(obj[k]);
+                                  }
+                              }
+                              return cleanObj;
+                          }
+                          visual = sanitizeObject(visual);
+                          // Ensure required properties are set
+                          if (visual.colors) visual.colors = visual.colors.map(c => typeof c === 'string' ? c : c.toString().replace(/ /g, ''));
+                          if (visual.text) {
+                              visual.text.content = visual.text.content || '';
+                              visual.text.color = typeof visual.text.color === 'string' ? visual.text.color : (visual.text.color ? visual.text.color.toString().replace(/ /g, '') : 'black');
+                              visual.text.font = visual.text.font || 'sans-serif';
+                              visual.text.size = visual.text.size || 20;
+                              visual.text.lineHeight = visual.text.lineHeight || 24;
+                              visual.text.kerning = visual.text.kerning || 0;
+                              visual.text.align = visual.text.align || 'left';
+                          }
+                          if (visual.shape) {
+                              visual.shape.shapeType = visual.shape.shapeType || 'circle';
+                              visual.shape.fillColor = typeof visual.shape.fillColor === 'string' ? visual.shape.fillColor : (visual.shape.fillColor ? visual.shape.fillColor.toString().replace(/ /g, '') : 'black');
+                              visual.shape.strokeColor = typeof visual.shape.strokeColor === 'string' ? visual.shape.strokeColor : (visual.shape.strokeColor ? visual.shape.strokeColor.toString().replace(/ /g, '') : 'black');
+                              visual.shape.size = visual.shape.size || 1;
+                          }
+                          if (visual.img) visual.img = typeof visual.img === 'string' ? visual.img : '';
+                          acc[key] = visual;
+                          return acc;
+                      }, {})
+                  }));
+
+                  const gridConfig = {
+                      rows: parseInt(sliders.rows.value() || 2, 10),
+                      cols: parseInt(sliders.columns.value() || 2, 10),
+                      canvasWidth: width || 800,
+                      canvasHeight: height || 600
+                  };
+
+                  const data = {
+                      seedCode: seed,
+                      plantedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                      growthConfig: cfg,
+                      layers: sanitizedLayers,
+                      gridConfig: gridConfig,
+                      growthProgress: 0,
+                      locked: false
+                  };
+
+                  // Log each visual for debugging
+                  data.layers.forEach(layer => {
+                      Object.values(layer.visuals).forEach(visual => {
+                          console.log('Sanitized visual:', JSON.stringify(visual, null, 2));
+                      });
+                  });
+
+                  console.log('Saving data to Firestore:', JSON.stringify(data, null, 2));
+                  await seedsCol.doc(seed).set(data, { merge: true });
+
+                  alert(`✅ Growth settings and layers saved for seed ${seed}`);
+                  markChanges();
+                  if (window.growthManager) {
+                      window.growthManager.init(seed);
+                      window.growthManager.applyGrowthConfig(cfg.sun, cfg.water, cfg.vitamins, cfg.days);
+                  } else {
+                      console.error('growthManager not available');
+                  }
+              } catch (err) {
+                  console.error('Error saving growth settings:', err);
+                  alert(`❌ Error saving growth settings: ${err.message}`);
+              }
+          });
+      }
+  }
+}
+
+setupGrowthIntegration();

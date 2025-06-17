@@ -144,9 +144,9 @@ canvas {
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  background-color: rgb(208, 252, 118);
-  border: 1px solid rgb(255, 255, 255);
-  color: #3c3c3c;
+  background-color: rgb(49, 49, 49);
+  border: 1px solid rgb(237, 237, 237);
+  color: rgb(237, 237, 237);
   font-size: clamp(8px, 1.5vw, 16px);
   font-family: 'pixel_DBT';
   display: flex;
@@ -194,7 +194,7 @@ canvas {
   justify-content: space-between;
   align-items: center;
   background: transparent;    /* Fondo oscuro SIEMPRE */
-  color: rgb(222, 222, 222);
+  color: rgba(203, 196, 194);
   border-top-right-radius: 18px;
   font-size: clamp(8px, 1.5vw, 16px);
   width: 100%;
@@ -252,7 +252,7 @@ body.hide-ui .popup {
 
 .info-style {
   font-family: monospace;
-  background: rgb(208, 252, 118, 0.8);
+  background: rgba(49, 49, 49, 0.8);
   color: rgb(60, 60, 60, 0.8);
   max-width: 95vw;      /* ← NUNCA más ancho que pantalla */
   width:max-content;
@@ -298,8 +298,8 @@ body.hide-ui .popup {
 }
 
 .info-text .info-title {
-  background:rgb(208, 252, 118);
-  color:  rgb(74, 67, 61);
+  background: rgba(49, 49, 49);
+  color:  rgba(203, 196, 194, 0.9);
   font-size: clamp(40px, 13vw, 180px); /* Si el pop-up se achica, el título nunca será menos de 40px */ 
   padding-left: 0;
   padding-top: 15px;
@@ -316,7 +316,7 @@ body.hide-ui .popup {
 }
 
 .info-text .info-subtitle {
-  color: rgb(74, 67, 61);
+  color: rgba(49, 49, 49);
   font-size: clamp(8px, 1.5vw, 16px);
   padding-left: 7px;
   padding-top: 15px;
@@ -330,7 +330,7 @@ body.hide-ui .popup {
 
 .info-text .info-dividertop {
     border: none;
-    border-top: 8px solid rgb(74, 67, 61);
+    border-top: 8px solid rgba(49, 49, 49);
     margin-bottom: 35px;   /* Controla el espacio arriba y abajo */
     margin-top: 80px;
     max-width: 100%;
@@ -339,7 +339,7 @@ body.hide-ui .popup {
 
   .info-text .info-dividerbottom {
     border: none;
-    border-top: 8px solid  rgb(74, 67, 61); /* Controla el espacio arriba y abajo */
+    border-top: 8px solid  rgba(49, 49, 49); /* Controla el espacio arriba y abajo */
     margin-top: 15px;
     margin-bottom: 210px; 
     max-width: 100%;
@@ -347,8 +347,8 @@ body.hide-ui .popup {
   }
 
 .info-text .info-section-title {
-  background:rgb(208, 252, 118);
-  color:  rgb(74, 67, 61);
+  background:rgba(49, 49, 49);
+  color:  rgba(203, 196, 194);
   border-top-right-radius: 16px;
   margin-top: 21px;
   margin-bottom: 21px;
@@ -429,8 +429,8 @@ body.hide-ui .popup {
   flex-direction: column;
   height: 100%;
   box-sizing: border-box;
-  background-color: rgba(208, 252, 118, 0.8);
-  border: 1px solid rgb(74, 67, 61);
+  background-color: rgba(49, 49, 49,0.8);;
+  border: 1px solid rgba(203, 196, 194);
   border-top-right-radius: 18px;
   padding: 10px;     /* ← El padding da espacio interno al borde */
 }
@@ -468,8 +468,8 @@ body.hide-ui .popup {
 #palette-sidebar-wrapper {
   margin-left: 0px;
   z-index: 2;
-  background-color:rgba(208, 252, 118, 0.8);
-  border: 1px solid rgb(74, 67, 61);
+  background-color:rgba(49, 49, 49, 0.8);
+  border: 1px solid rgba(49, 49, 49, 0.8);
   display: flex;
   flex-direction: row;
   justify-content: flex-end;
@@ -477,7 +477,7 @@ body.hide-ui .popup {
 }
 
 #palette-sidebar {
-  background: rgba(203, 196, 194, 0.9);
+  background: rgba(203, 196, 194, 0.8);
   margin: 10px;
   padding: 10px;
   border-top-right-radius: 18px;
@@ -501,7 +501,7 @@ body.hide-ui .popup {
 
 /* === Tippy.js custom theme: modulariem === */
 .tippy-box[data-theme~='modulariem'] {
-  background-color: rgb(245, 245, 245); /* gris claro */
+  background-color: rgba(203, 196, 194); /* gris claro */
   color: rgb(74, 67, 61);                /* texto gris oscuro */
   border: 1px solid rgb(74, 67, 61);     /* borde gris oscuro */
   font-family: monospace;
@@ -538,7 +538,7 @@ body.hide-ui .popup {
 .popup-close {
   background: rgb(74, 67, 61);     /* Fondo oscuro SIEMPRE */
   border: none;
-  color: rgb(203, 196, 194);       /* Texto claro */
+  color: rgba(203, 196, 194);       /* Texto claro */
   font-family: 'JetBrains Mono', monospace;
   font-size: clamp(8px, 1.5vw, 16px);
   padding: 3px 14px 3px 14px;
@@ -558,7 +558,7 @@ body.hide-ui .popup {
 .popup-shortcuts {
   background: rgb(74, 67, 61);     /* Fondo oscuro SIEMPRE */
   border: none;
-  color: rgb(203, 196, 194);       /* Texto claro */
+  color:rgba(203, 196, 194);      /* Texto claro */
   font-family: 'JetBrains Mono', monospace;
   font-size: clamp(8px, 1.5vw, 16px);
   padding: 3px 14px 3px 14px;
@@ -578,7 +578,7 @@ body.hide-ui .popup {
   justify-content: space-between;
   align-items: left;
   background: transparent;
-  color: rgb(203, 196, 194);       /* Texto claro */
+  color: rgba(203, 196, 194);       /* Texto claro */
   font-family: 'JetBrains Mono', monospace;
   font-size: clamp(8px, 1.5vw, 16px);
   border-radius: 0px 14px 0 0;
@@ -592,7 +592,7 @@ body.hide-ui .popup {
   justify-content: space-between;
   align-items: center;
   background: transparent;    /* Fondo oscuro SIEMPRE */
-  color: rgb(222, 222, 222);
+  color: rgba(203, 196, 194);
   border-top-right-radius: 18px;
   font-size: clamp(8px, 1.5vw, 16px);
   width: 100%;

@@ -1,159 +1,41 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Modulariem Harvest</title>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css"/>
-  <style>
-    body {
-      background: #fff;
-      font-family: 'JetBrains Mono', monospace;
-      margin: 0;
-    }
-    #harvest-container {
-      display: flex;
-      height: 100vh;
-    }
-    .panel {
-      flex: 1;
-      border: 1px solid #000;
-      padding: 1rem;
-      box-sizing: border-box;
-      display: flex;
-      flex-direction: column;
-    }
-    .panel h2 {
-      font-family: monospace;
-      text-transform: lowercase;
-      margin-bottom: 1rem;
-      font-size: 1.25rem;
-    }
-
-    /* seed-finder */
-    #seed-finder label,
-    #seed-finder input,
-    #seed-finder button {
-      display: block;
-      margin-bottom: .5rem;
-      position: relative;
-      z-index: 1;
-    }
-    #seedId {
-      width: 100%;
-      padding: .25rem;
-      font-family: monospace;
-      font-size: 1rem;
-      box-sizing: border-box;
-    }
-    #seedError {
-      color: crimson;
-      font-size: .9rem;
-      min-height: 1.2em;
-      margin-bottom: .5rem;
-    }
-    #seed-finder .footer {
-      position: absolute;
-      bottom: 1rem;
-      left: 1rem;
-      color: #555;
-      white-space: pre;
-      line-height: 1.2;
-      font-size: .875rem;
-    }
-
-    /* canvases fill their panels */
-    .panel canvas,
-    #canvas-wrapper {
-      flex: 1;
-      width: 100%;
-      display: block;
-    }
-
-    /* summary styling */
-    #harvest-summary {
-      margin-top: 1rem;
-      font-size: 1rem;
-    }
-    #harvest-summary b {
-      display: block;
-      margin-bottom: .5rem;
-    }
-    #harvest-summary em {
-      display: block;
-      margin-bottom: .25rem;
-    }
-
-    /* shrink the original seed canvas to 60% */
-  #modularCanvas {
-    width: 60%;
-    height: auto;
-  }
-  /* style the fullscreen button */
-  #seedFullscreenBtn {
-    margin-bottom: 0.5rem;
-    font-family: monospace;
-    font-size: 0.9rem;
-  }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seed Finder</title>
+    <link rel="stylesheet" href="harvest.css">
 </head>
-<body data-mode="view">
-
-
-  <div id="harvest-container">
-    <!-- 1) seed finder panel -->
-    <div id="seed-finder" class="panel">
-      <h2>seed finder</h2>
-      <label for="seedId">Seed ID (7 chars):</label>
-      <input
-        type="text" id="seedId"
-        placeholder="Enter 7-char seed…"
-        maxlength="7"
-        autocomplete="off"
-        autocapitalize="characters"
-      />
-      <!-- ← inline error appears here -->
-      <div id="seedError"></div>
-      <button type="button" id="lookupBtn">Lookup</button>
-      <div class="footer">
-        Copy↵
-        Edit↵
-        root↵
-        harvest↵
-        garden↵
-      </div>
+<body>
+    <div id="header-container">
+        <h1>harvest</h1>
+        <form id="seed-finder">
+            <label>
+                search your seed id here
+                <input type="text" id="seedId" name="seed" maxlength="7" required>
+            </label>
+            <button type="button" id="lookupBtn">search seed</button>
+            <div id="seedError"></div> <!-- Moved here for better UX -->
+        </form>
     </div>
-
-    <!-- 2) seed (original) panel -->
-    <div id="seed" class="panel">
-      <h2>seed</h2>
-      <canvas id="modularCanvas" style="flex:1; transform: scale(0.6); transform-origin: top left;"></canvas>
-      <button id="seedFullscreenBtn" style="margin-top:.5em; font-family:monospace;">Full Size</button>
+    <div id="main-content">
+        <div id="seed-container">
+            <h2>plant</h2>
+            <div id="canvas-wrapper"></div> <!-- Seed canvas container -->
+            <div id="harvest-summary">Last update:</div>
+        </div>
+        <div id="growing-container">
+            <h2>harvesting</h2>
+            <div id="growing-wrapper"></div> <!-- Growing canvas container -->
+            <div id="growing-summary">Methods used:<br>Days elapsed: 0/21<br>Last update:</div>
+            <button id="seedFullscreenBtn">Fullscreen</button>
+        </div>
     </div>
-
-    <!-- 3) harvest (grown) panel -->
-    <div id="harvest" class="panel">
-      <h2>harvest</h2>
-      <canvas id="harvestCanvas"></canvas>
-      <div id="harvest-summary"></div>
-    </div>
-  </div>
-
-
-    <!-- … above your other scripts … -->
-
-  <!-- 0) Shared helpers -->
-  <script src="common.js"></script>
-  <!-- 1) p5 + your editor runtime -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
-  <script src="sketch.js"></script>
-  <!-- 2) Firebase compat SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/11.9.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.9.0/firebase-firestore-compat.js"></script>
-  <!-- 3) Your harvest logic -->
-  <script src="harvest.js"></script>
-
-  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
+    <script src="common.js"></script>
+    <script src="growth.js"></script> <!-- Ensure growth.js is included -->
+    <script src="harvest.js"></script>
 </body>
 </html>

@@ -125,11 +125,12 @@
             <button id="editGridConfirm">Confirm Grid</button>
           </div>
           <div class="tool-options" id="options-growth">
-            <label>☀ Sun <input type="range" name="sun" min="0" max="100" value="50"></label>
-            <label>💧 Water <input type="range" name="water" min="0" max="100" value="50"></label>
-            <label>🍃 Vitamins <input type="range" name="vitamins" min="0" max="100" value="50"></label>
-            <label>📅 Days <input type="number" name="days" min="1" max="365" value="30"></label>
+            <label>Sun <input type="range" name="sun" min="0" max="10" value="50"></label>
+            <label>Water <input type="range" name="water" min="0" max="10" value="50"></label>
+            <label>Vitamins <input type="range" name="vitamins" min="0" max="10" value="50"></label>
+            <label>Days <input type="number" name="days" min="1" max="21" value="30"></label>
             <button id="applyGrowthBtn">Apply Growth</button>
+            <button id="cloneSeedBtn" style="display: none;">Clone Seed</button>
           </div>
           <div class="tool-options" id="options-color">
             <label>Color (WIP) <input type="color" value="#ff00ff"></label>
@@ -291,6 +292,8 @@
       
   
   <input type="file" id="image-loader" accept="image/*" style="display:none" />
+<script src="common.js"></script> 
+<script src="growth.js"></script>
 <script src="sketch.js"></script>
 </body>
 </html>

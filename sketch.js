@@ -116,12 +116,25 @@ async function saveToFirestore() {
       visible: typeof layer.visible === 'boolean' ? layer.visible : true,
       visuals: Object.keys(layer.visuals || {}).reduce((acc, key) => {
         const visual = { ...layer.visuals[key] };
-        // Remove all p5-specific or unserializable properties
-        delete visual.pg;
-        if (visual.colors) visual.colors = visual.colors.map(c => typeof c === 'string' ? c : c.toString().replace(/ /g, ''));
-        if (visual.text && visual.text.color) visual.text.color = typeof visual.text.color === 'string' ? visual.text.color : visual.text.color.toString().replace(/ /g, '');
-        if (visual.shape && visual.shape.fillColor) visual.shape.fillColor = typeof visual.shape.fillColor === 'string' ? visual.shape.fillColor : visual.shape.fillColor.toString().replace(/ /g, '');
-        if (visual.shape && visual.shape.strokeColor) visual.shape.strokeColor = typeof visual.shape.strokeColor === 'string' ? visual.shape.strokeColor : visual.shape.strokeColor.toString().replace(/ /g, '');
+        delete visual.pg; // Eliminar propiedades no serializables
+        if (visual.colors) {
+          visual.colors = visual.colors.map(c => typeof c === 'string' ? c : c.toString().replace(/ /g, ''));
+        }
+        if (visual.text && visual.text.color) {
+          visual.text.color = typeof visual.text.color === 'string' ? visual.text.color : visual.text.color.toString().replace(/ /g, '');
+        }
+        if (visual.shape) {
+          visual.shape = {
+            shapeType: visual.shape.shapeType || 'circle',
+            fillColor: typeof visual.shape.fillColor === 'string' ? visual.shape.fillColor : (visual.shape.fillColor ? visual.shape.fillColor.toString().replace(/ /g, '') : '#ffffff'),
+            strokeColor: typeof visual.shape.strokeColor === 'string' ? visual.shape.strokeColor : (visual.shape.strokeColor ? visual.shape.strokeColor.toString().replace(/ /g, '') : '#000000'),
+            size: visual.shape.size || 1,
+            opacity: visual.shape.opacity || 1,
+            extrudePct: visual.shape.extrudePct || 0,
+            subdivisions: visual.shape.subdivisions || 0,
+            tint: visual.shape.tint || null
+          };
+        }
         acc[key] = visual;
         return acc;
       }, {})
@@ -141,7 +154,7 @@ async function saveToFirestore() {
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
 
-    console.log('Saving data to Firestore:', JSON.stringify(data, null, 2)); // Detailed debug log
+    console.log('Saving data to Firestore:', JSON.stringify(data, null, 2));
     await seedsCol.doc(seed).set(data, { merge: true });
 
     console.log(`✅ Auto-saved seed ${seed} to Firestore`);
@@ -151,6 +164,7 @@ async function saveToFirestore() {
     console.warn(`❌ Failed to auto-save: ${err.message}`);
   }
 }
+
 function debounceSaveToFirestore() {
   clearTimeout(saveTimeout);
   markChanges();
@@ -233,129 +247,135 @@ function randomColorFromNeonPalette() {
 
 function setup() {
   if (MODE === 'edit') {
-      let container = select('#canvas-wrapper')?.elt;
-      if (!container) {
-          console.error('Canvas wrapper not found in edit mode');
-          return;
-      }
-      canvas = createCanvas(container.clientWidth, container.clientHeight);
-      canvas.parent('canvas-wrapper');
-      canvas.elt.setAttribute('tabindex', '0');
-      canvas.style('display', 'block');
-      canvas.style('width', '100%');
-      canvas.style('height', '100%');
+    let container = select('#canvas-wrapper')?.elt;
+    if (!container) {
+      console.error('Canvas wrapper not found in edit mode');
+      return;
+    }
+    canvas = createCanvas(container.clientWidth, container.clientHeight);
+    canvas.parent('canvas-wrapper');
+    canvas.elt.setAttribute('tabindex', '0');
+    canvas.style('display', 'block');
+    canvas.style('width', '100%');
+    canvas.style('height', '100%');
   } else {
-      canvas = createCanvas(800, 600); // Default size for view mode
+    canvas = createCanvas(800, 600);
   }
 
   gradientBuffer = createGraphics(width, height);
 
   const initializeDefaultLayer = (rows = 2, cols = 2) => {
-      const defaultLayer = {
-          id: generateLayerID(),
-          name: "gradient 1",
+    const defaultLayer = {
+      id: generateLayerID(),
+      name: "gradient 1",
+      type: "gradient",
+      color: randomColorFromNeonPalette(),
+      visible: true,
+      visuals: {}
+    };
+    for (let i = 0; i < rows; i++) {
+      for (let j = 0; j < cols; j++) {
+        defaultLayer.visuals[`${i}-${j}`] = {
           type: "gradient",
-          color: randomColorFromNeonPalette(),
-          visible: true,
-          visuals: {}
-      };
-      for (let i = 0; i < rows; i++) {
-          for (let j = 0; j < cols; j++) {
-              defaultLayer.visuals[`${i}-${j}`] = {
-                  type: "gradient",
-                  colors: [
-                      randomColorFromNeonPalette(),
-                      randomColorFromNeonPalette(),
-                      randomColorFromNeonPalette()
-                  ],
-                  offset: random(0, 1)
-              };
-          }
+          colors: [
+            randomColorFromNeonPalette(),
+            randomColorFromNeonPalette(),
+            randomColorFromNeonPalette()
+          ],
+          offset: random(0, 1)
+        };
       }
-      return defaultLayer;
+    }
+    return defaultLayer;
   };
 
   updateGridPositions();
 
-  (async () => {
-      try {
-          const doc = await seedsCol.doc(seed).get();
-          let rows = 2, cols = 2;
-          if (doc.exists) {
-              const data = doc.data();
-              if (data.layers && Array.isArray(data.layers)) {
-                  window.layers = data.layers;
-                  rows = data.gridConfig?.rows || 2;
-                  cols = data.gridConfig?.cols || 2;
-              } else {
-                  window.layers = [initializeDefaultLayer(rows, cols)];
-                  await seedsCol.doc(seed).set({
-                      seedCode: seed,
-                      layers: window.layers,
-                      gridConfig: { rows, cols, canvasWidth: width || 800, canvasHeight: height || 600 },
-                      plantedAt: firebase.firestore.FieldValue.serverTimestamp()
-                  }, { merge: true });
-              }
-              if (data.gridConfig) {
-                  rows = data.gridConfig.rows || rows;
-                  cols = data.gridConfig.cols || cols;
-              }
-          } else {
-              window.layers = [initializeDefaultLayer(rows, cols)];
-              await seedsCol.doc(seed).set({
-                  seedCode: seed,
-                  layers: window.layers,
-                  gridConfig: { rows, cols, canvasWidth: width || 800, canvasHeight: height || 600 },
-                  plantedAt: firebase.firestore.FieldValue.serverTimestamp()
-              }, { merge: true });
-          }
-          window.activeLayer = window.layers[0] || null;
-          updateGridPositions();
-          if (MODE === 'edit') renderLayersUI();
-          redraw();
-          console.log('Layers loaded on setup:', window.layers.map(l => l.name));
-      } catch (err) {
-          console.error('Error loading from Firestore:', err);
-          window.layers = [initializeDefaultLayer()];
-          window.activeLayer = window.layers[0];
-          updateGridPositions();
-          if (MODE === 'edit') renderLayersUI();
-          redraw();
+  // Fetch seed data using Promise
+  seedsCol.doc(seed).get().then(doc => {
+    let rows = 2, cols = 2;
+    if (doc.exists) {
+      const data = doc.data();
+      if (data.layers && Array.isArray(data.layers)) {
+        window.layers = data.layers;
+        rows = data.gridConfig?.rows || 2;
+        cols = data.gridConfig?.cols || 2;
+      } else {
+        window.layers = [initializeDefaultLayer(rows, cols)];
+        seedsCol.doc(seed).set({
+          seedCode: seed,
+          layers: window.layers,
+          gridConfig: { rows, cols, canvasWidth: width || 800, canvasHeight: height || 600 },
+          plantedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true }).catch(err => console.error('Error saving default seed:', err));
       }
-  })().catch(err => console.error('Setup failed:', err));
+      if (data.gridConfig) {
+        rows = data.gridConfig.rows || rows;
+        cols = data.gridConfig.cols || cols;
+      }
+      // Check locked state and disable editing
+      if (data.locked) {
+        disableEditingControls();
+        if (window.growthManager) {
+          window.growthManager.init(seed);
+          window.growthManager.lockSeed();
+        }
+      }
+    } else {
+      window.layers = [initializeDefaultLayer(rows, cols)];
+      seedsCol.doc(seed).set({
+        seedCode: seed,
+        layers: window.layers,
+        gridConfig: { rows, cols, canvasWidth: width || 800, canvasHeight: height || 600 },
+        plantedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true }).catch(err => console.error('Error creating new seed:', err));
+    }
+    window.activeLayer = window.layers[0] || null;
+    updateGridPositions();
+    if (MODE === 'edit') renderLayersUI();
+    redraw();
+    console.log('Layers loaded on setup:', window.layers.map(l => l.name));
+  }).catch(err => {
+    console.error('Error loading from Firestore:', err);
+    window.layers = [initializeDefaultLayer()];
+    window.activeLayer = window.layers[0];
+    updateGridPositions();
+    if (MODE === 'edit') renderLayersUI();
+    redraw();
+  });
 
   if (MODE === 'edit') {
-      const seedInput = select('input[name="seed"]');
-      if (seedInput) seedInput.value(seed);
+    const seedInput = select('input[name="seed"]');
+    if (seedInput) seedInput.value(seed);
 
-      const btn = document.getElementById('seed-btn');
-      if (btn) {
-          btn.addEventListener('click', () => {
-              window.open(`harvest.html?seed=${seed}`, '_blank', 'noopener');
-          });
-      }
+    const btn = document.getElementById('seed-btn');
+    if (btn) {
+      btn.addEventListener('click', () => {
+        window.open(`harvest.html?seed=${seed}`, '_blank', 'noopener');
+      });
+    }
 
-      // Initialize sliders
-      sliders.rows = select('input[name="rows"]') || { value: () => 2 };
-      sliders.columns = select('input[name="columns"]') || { value: () => 2 };
-      sliders.sun = select('input[name="sun"]') || { value: () => 0 };
-      sliders.water = select('input[name="water"]') || { value: () => 0 };
-      sliders.vitamins = select('input[name="vitamins"]') || { value: () => 0 };
-      sliders.days = select('input[name="days"]') || { value: () => 1 };
+    // Initialize sliders
+    sliders.rows = select('input[name="rows"]') || { value: () => 2 };
+    sliders.columns = select('input[name="columns"]') || { value: () => 2 };
+    sliders.sun = select('input[name="sun"]') || { value: () => 0 };
+    sliders.water = select('input[name="water"]') || { value: () => 0 };
+    sliders.vitamins = select('input[name="vitamins"]') || { value: () => 0 };
+    sliders.days = select('input[name="days"]') || { value: () => 1 };
 
-      if (typeof sliders.rows.value !== 'function') sliders.rows.value = () => 2;
-      if (typeof sliders.columns.value !== 'function') sliders.columns.value = () => 2;
-      if (typeof sliders.sun.value !== 'function') sliders.sun.value = () => 0;
-      if (typeof sliders.water.value !== 'function') sliders.water.value = () => 0;
-      if (typeof sliders.vitamins.value !== 'function') sliders.vitamins.value = () => 0;
-      if (typeof sliders.days.value !== 'function') sliders.days.value = () => 1;
+    if (typeof sliders.rows.value !== 'function') sliders.rows.value = () => 2;
+    if (typeof sliders.columns.value !== 'function') sliders.columns.value = () => 2;
+    if (typeof sliders.sun.value !== 'function') sliders.sun.value = () => 0;
+    if (typeof sliders.water.value !== 'function') sliders.water.value = () => 0;
+    if (typeof sliders.vitamins.value !== 'function') sliders.vitamins.value = () => 0;
+    if (typeof sliders.days.value !== 'function') sliders.days.value = () => 1;
   } else {
-      sliders.rows = { value: () => 2 };
-      sliders.columns = { value: () => 2 };
-      sliders.sun = { value: () => 0 };
-      sliders.water = { value: () => 0 };
-      sliders.vitamins = { value: () => 0 };
-      sliders.days = { value: () => 1 };
+    sliders.rows = { value: () => 2 };
+    sliders.columns = { value: () => 2 };
+    sliders.sun = { value: () => 0 };
+    sliders.water = { value: () => 0 };
+    sliders.vitamins = { value: () => 0 };
+    sliders.days = { value: () => 1 };
   }
 
   updateGridPositions();
@@ -364,17 +384,17 @@ function setup() {
   const gradientColor2 = document.getElementById("gradient-color-2");
   const gradientColor3 = document.getElementById("gradient-color-3");
   if (gradientColor1 && gradientColor2 && gradientColor3) {
-      setupGradientColorInputs();
+    setupGradientColorInputs();
   }
 
   const infoPopup = document.getElementById('info-popup');
   if (infoPopup) {
-      setupInfoPopup();
+    setupInfoPopup();
   }
 
   const imageFileInput = document.getElementById("image-file-input");
   if (imageFileInput) {
-      setupImageUpload();
+    setupImageUpload();
   }
 
   setupSliderFeedback('.grid-sliders label');
@@ -383,75 +403,43 @@ function setup() {
   setupGridEditingLogic();
   setupResizerHandle();
 
-  const applyBtn = document.getElementById('applyGrowthBtn');
-  if (applyBtn) {
-      applyBtn.addEventListener('click', async () => {
-          const cfg = {
-              sun: +sliders.sun.value() || 0,
-              water: +sliders.water.value() || 0,
-              vitamins: +sliders.vitamins.value() || 0,
-              days: +sliders.days.value() || 0,
-              startDate: new Date().toISOString()
-          };
-          try {
-              const sanitizedLayers = window.layers.map(layer => ({
-                  id: layer.id || generateLayerID(),
-                  name: layer.name || `Layer ${window.layers.indexOf(layer) + 1}`,
-                  type: layer.type || 'gradient',
-                  color: layer.color || randomColorFromNeonPalette(),
-                  visible: typeof layer.visible === 'boolean' ? layer.visible : true,
-                  visuals: Object.keys(layer.visuals || {}).reduce((acc, key) => {
-                      const visual = { ...layer.visuals[key] };
-                      // Remove all p5-specific or unserializable properties
-                      delete visual.pg;
-                      if (visual.colors) visual.colors = visual.colors.map(c => c.toString().replace(/ /g, ''));
-                      if (visual.text && visual.text.color) visual.text.color = visual.text.color.toString().replace(/ /g, '');
-                      acc[key] = visual;
-                      return acc;
-                  }, {})
-              }));
-
-              const gridConfig = {
-                  rows: parseInt(sliders.rows.value() || 2, 10),
-                  cols: parseInt(sliders.columns.value() || 2, 10),
-                  canvasWidth: width || 800,
-                  canvasHeight: height || 600
-              };
-
-              const data = {
-                  seedCode: seed,
-                  plantedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                  updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                  growthConfig: cfg,
-                  layers: sanitizedLayers,
-                  gridConfig: gridConfig,
-                  growthProgress: 0,
-                  locked: false
-              };
-
-              console.log('Saving data to Firestore:', data); // Debug log
-              await seedsCol.doc(seed).set(data, { merge: true });
-
-              alert(`✅ Growth settings and layers saved for seed ${seed}`);
-              markChanges();
-              const growthScript = document.createElement('script');
-              growthScript.src = 'growth.js';
-              document.body.appendChild(growthScript);
-              if (window.growthManager) {
-                  window.growthManager.init(seed);
-                  window.growthManager.applyGrowthConfig(cfg.sun, cfg.water, cfg.vitamins, cfg.days);
-              } else {
-                  console.error('growthManager not available');
-              }
-          } catch (err) {
-              console.error(err);
-              alert(`❌ Error saving growth settings: ${err.message}`);
-          }
-      });
-  }
+  // Move growth integration to a separate function
+  setupGrowthIntegration();
 
   activeBorderColor = color(0, 255, 0);
+
+  function disableEditingControls() {
+    // Disable tool buttons
+    document.querySelectorAll('.tool-btn').forEach(btn => {
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+    });
+    // Disable sliders
+    document.querySelectorAll('input[type="range"]').forEach(slider => {
+      slider.disabled = true;
+    });
+    // Disable canvas interactions
+    if (canvas) {
+      canvas.elt.style.pointerEvents = 'none';
+    }
+    // Disable layer controls
+    document.querySelectorAll('.layer-entry input, .layer-entry button').forEach(el => {
+      el.disabled = true;
+    });
+    // Show locked message
+    const palette = document.getElementById('palette');
+    if (palette) {
+      const lockedMsg = document.createElement('div');
+      lockedMsg.id = 'locked-message';
+      lockedMsg.style.color = 'red';
+      lockedMsg.style.padding = '10px';
+      lockedMsg.textContent = 'This seed is locked for growth. Duplicate it to edit.';
+      palette.appendChild(lockedMsg);
+    }
+  }
 }
+
+
 function setupResizerHandle() {
   if (MODE !== 'edit') {
       console.log('this is is an editing function');
@@ -557,7 +545,6 @@ if (!window.activeLayer && window.layers.length > 0) {
 // THIS IS THE GROWING OPTIONS PART-----> When the user clicks Apply:
 
 if (MODE === 'edit') {
-  const applyBtn = document.getElementById('applyGrowthBtn');
   if (applyBtn) {
     applyBtn.addEventListener('click', async () => {
       // 1) Gather the form values
@@ -3446,107 +3433,161 @@ window.loadSeed = function(data) {
 ///////GROW
 
 function setupGrowthIntegration() {
-  if (MODE === 'edit') {
-      const applyBtn = document.getElementById('applyGrowthBtn');
-      if (applyBtn) {
-          applyBtn.addEventListener('click', async () => {
-              const cfg = {
-                  sun: +sliders.sun.value() || 0,
-                  water: +sliders.water.value() || 0,
-                  vitamins: +sliders.vitamins.value() || 0,
-                  days: +sliders.days.value() || 0,
-                  startDate: new Date().toISOString()
-              };
-              try {
-                  const sanitizedLayers = window.layers.map(layer => ({
-                      id: layer.id || generateLayerID(),
-                      name: layer.name || `Layer ${window.layers.indexOf(layer) + 1}`,
-                      type: layer.type || 'gradient',
-                      color: layer.color || randomColorFromNeonPalette(),
-                      visible: typeof layer.visible === 'boolean' ? layer.visible : true,
-                      visuals: Object.keys(layer.visuals || {}).reduce((acc, key) => {
-                          let visual = { ...layer.visuals[key] };
-                          // Recursive sanitization
-                          function sanitizeObject(obj) {
-                              if (obj === null || typeof obj !== 'object') return obj;
-                              if (obj instanceof p5.Color) return obj.toString().replace(/ /g, '');
-                              if (obj instanceof p5.Graphics) return null;
-                              if (typeof obj === 'function') return undefined;
-                              const cleanObj = Array.isArray(obj) ? [] : {};
-                              for (let k in obj) {
-                                  if (Object.prototype.hasOwnProperty.call(obj, k)) {
-                                      cleanObj[k] = sanitizeObject(obj[k]);
-                                  }
-                              }
-                              return cleanObj;
-                          }
-                          visual = sanitizeObject(visual);
-                          // Ensure required properties are set
-                          if (visual.colors) visual.colors = visual.colors.map(c => typeof c === 'string' ? c : c.toString().replace(/ /g, ''));
-                          if (visual.text) {
-                              visual.text.content = visual.text.content || '';
-                              visual.text.color = typeof visual.text.color === 'string' ? visual.text.color : (visual.text.color ? visual.text.color.toString().replace(/ /g, '') : 'black');
-                              visual.text.font = visual.text.font || 'sans-serif';
-                              visual.text.size = visual.text.size || 20;
-                              visual.text.lineHeight = visual.text.lineHeight || 24;
-                              visual.text.kerning = visual.text.kerning || 0;
-                              visual.text.align = visual.text.align || 'left';
-                          }
-                          if (visual.shape) {
-                              visual.shape.shapeType = visual.shape.shapeType || 'circle';
-                              visual.shape.fillColor = typeof visual.shape.fillColor === 'string' ? visual.shape.fillColor : (visual.shape.fillColor ? visual.shape.fillColor.toString().replace(/ /g, '') : 'black');
-                              visual.shape.strokeColor = typeof visual.shape.strokeColor === 'string' ? visual.shape.strokeColor : (visual.shape.strokeColor ? visual.shape.strokeColor.toString().replace(/ /g, '') : 'black');
-                              visual.shape.size = visual.shape.size || 1;
-                          }
-                          if (visual.img) visual.img = typeof visual.img === 'string' ? visual.img : '';
-                          acc[key] = visual;
-                          return acc;
-                      }, {})
-                  }));
-
-                  const gridConfig = {
-                      rows: parseInt(sliders.rows.value() || 2, 10),
-                      cols: parseInt(sliders.columns.value() || 2, 10),
-                      canvasWidth: width || 800,
-                      canvasHeight: height || 600
-                  };
-
-                  const data = {
-                      seedCode: seed,
-                      plantedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                      growthConfig: cfg,
-                      layers: sanitizedLayers,
-                      gridConfig: gridConfig,
-                      growthProgress: 0,
-                      locked: false
-                  };
-
-                  // Log each visual for debugging
-                  data.layers.forEach(layer => {
-                      Object.values(layer.visuals).forEach(visual => {
-                          console.log('Sanitized visual:', JSON.stringify(visual, null, 2));
-                      });
-                  });
-
-                  console.log('Saving data to Firestore:', JSON.stringify(data, null, 2));
-                  await seedsCol.doc(seed).set(data, { merge: true });
-
-                  alert(`✅ Growth settings and layers saved for seed ${seed}`);
-                  markChanges();
-                  if (window.growthManager) {
-                      window.growthManager.init(seed);
-                      window.growthManager.applyGrowthConfig(cfg.sun, cfg.water, cfg.vitamins, cfg.days);
-                  } else {
-                      console.error('growthManager not available');
-                  }
-              } catch (err) {
-                  console.error('Error saving growth settings:', err);
-                  alert(`❌ Error saving growth settings: ${err.message}`);
-              }
-          });
-      }
+  if (MODE !== 'edit') {
+    activeBorderColor = color(0, 255, 0);
+    return;
   }
-}
 
-setupGrowthIntegration();
+  const applyBtn = document.getElementById('applyGrowthBtn');
+  if (!applyBtn) {
+    console.error('Apply Growth button not found');
+    activeBorderColor = color(0, 255, 0);
+    return;
+  }
+
+  // Remove existing listeners to prevent duplicates
+  const newApplyBtn = applyBtn.cloneNode(true);
+  applyBtn.parentNode.replaceChild(newApplyBtn, applyBtn);
+
+  newApplyBtn.addEventListener('click', async () => {
+    try {
+      // Validate slider values
+      const cfg = {
+        sun: Number(sliders.sun?.value() ?? 0),
+        water: Number(sliders.water?.value() ?? 0),
+        vitamins: Number(sliders.vitamins?.value() ?? 0),
+        days: Number(sliders.days?.value() ?? 0),
+        startDate: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      // Sanitization function
+      function sanitizeObject(obj, seen = new WeakSet()) {
+        if (obj === null || typeof obj !== 'object') return obj;
+        if (seen.has(obj)) return null;
+        seen.add(obj);
+        if (obj instanceof p5.Color) return obj.toString().replace(/ /g, '');
+        if (obj instanceof p5.Graphics) return null;
+        if (obj instanceof p5.Image) return null;
+        if (obj instanceof p5.Vector) return { x: obj.x, y: obj.y, z: obj.z || 0 };
+        if (obj instanceof firebase.firestore.Timestamp) return obj;
+        if (obj instanceof Date) return obj.toISOString();
+        if (typeof obj === 'function') return undefined;
+        if (typeof obj.toString === 'function' && obj.toString !== Object.prototype.toString) {
+          try { return obj.toString(); } catch { return null; }
+        }
+        const cleanObj = Array.isArray(obj) ? [] : {};
+        for (const k in obj) {
+          if (Object.prototype.hasOwnProperty.call(obj, k)) {
+            cleanObj[k] = sanitizeObject(obj[k], seen);
+          }
+        }
+        return cleanObj;
+      }
+
+      // Sanitize layers
+      const sanitizedLayers = window.layers.map(layer => ({
+        id: layer.id || generateLayerID(),
+        name: layer.name || `Layer ${window.layers.indexOf(layer) + 1}`,
+        type: layer.type || 'gradient',
+        color: typeof layer.color === 'string' ? layer.color : randomColorFromNeonPalette(),
+        visible: typeof layer.visible === 'boolean' ? layer.visible : true,
+        visuals: Object.keys(layer.visuals || {}).reduce((acc, key) => {
+          let visual = { ...layer.visuals[key] };
+          visual = sanitizeObject(visual);
+
+          if (visual.colors) {
+            visual.colors = Array.isArray(visual.colors)
+              ? visual.colors.map(c => typeof c === 'string' ? c : c?.toString()?.replace(/ /g, '') ?? '#ffffff')
+              : [];
+          }
+          if (visual.text) {
+            visual.text = {
+              content: String(visual.text?.content ?? ''),
+              color: typeof visual.text?.color === 'string' ? visual.text.color : (visual.text?.color?.toString()?.replace(/ /g, '') ?? '#000000'),
+              font: String(visual.text?.font ?? 'sans-serif'),
+              size: Number(visual.text?.size ?? 20),
+              lineHeight: Number(visual.text?.lineHeight ?? 24),
+              kerning: Number(visual.text?.kerning ?? 0),
+              align: String(visual.text?.align ?? 'left'),
+              extrude: Number(visual.text?.extrude ?? 0),
+              branches: Number(visual.text?.branches ?? 0),
+              hue: Number(visual.text?.hue ?? 0)
+            };
+          }
+          if (visual.shape) {
+            visual.shape = {
+              shapeType: String(visual.shape?.shapeType ?? 'circle'),
+              fillColor: typeof visual.shape?.fillColor === 'string' ? visual.shape.fillColor : (visual.shape?.fillColor?.toString()?.replace(/ /g, '') ?? '#ffffff'),
+              strokeColor: typeof visual.shape?.strokeColor === 'string' ? visual.shape.strokeColor : (visual.shape?.strokeColor?.toString()?.replace(/ /g, '') ?? '#ffffff'),
+              size: Number(visual.shape?.size ?? 100),
+              opacity: Number(visual.shape?.opacity ?? 1),
+              extrudePct: Number(visual.shape?.extrudePct ?? 0),
+              subdivisions: Number(visual.shape?.subdivisions ?? 0),
+              tint: visual.shape?.tint ? String(visual.shape.tint) : null
+            };
+          }
+          if (visual.bloom) {
+            visual.bloom = {
+              sigma: Number(visual.bloom?.sigma ?? 0),
+              intensity: Number(visual.bloom?.intensity ?? 0)
+            };
+          }
+          if (visual.speckles) {
+            visual.speckles = {
+              pct: Number(visual.speckles?.pct ?? 0),
+              radius: Number(visual.speckles?.radius ?? 0)
+            };
+          }
+          if (visual.img) {
+            visual.img = typeof visual.img === 'string' ? visual.img : '';
+          }
+          acc[key] = visual;
+          return acc;
+        }, {})
+      }));
+
+      const gridConfig = {
+        rows: parseInt(sliders.rows?.value() ?? 2, 10),
+        cols: parseInt(sliders.columns?.value() ?? 2, 10),
+        canvasWidth: Number(width ?? 800),
+        canvasHeight: Number(height ?? 600)
+      };
+
+      const data = {
+        seedCode: seed,
+        plantedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        growthConfig: {
+          sun: cfg.sun,
+          water: cfg.water,
+          vitamins: cfg.vitamins,
+          days: cfg.days,
+          startDate: cfg.startDate
+        },
+        originalLayers: sanitizedLayers,
+        layers: sanitizedLayers,
+        gridConfig,
+        growthProgress: 0,
+        locked: true
+      };
+
+      console.log('Saving data to Firestore:', data); // simplificado para evitar stack overflow
+      await seedsCol.doc(seed).set(data, { merge: true });
+
+      alert(`✅ Growth settings and layers saved for seed ${seed}`);
+      markChanges();
+      if (window.growthManager) {
+        window.growthManager.init(seed);
+        window.growthManager.applyGrowthConfig(cfg.sun, cfg.water, cfg.vitamins, cfg.days);
+        disableEditingControls();
+      } else {
+        console.error('growthManager not available');
+      }
+    } catch (err) {
+      console.error('Error saving growth settings:', err);
+      alert(`❌ Error saving growth settings: ${err.message}`);
+    }
+  });
+
+  activeBorderColor = color(0, 255, 0);
+}

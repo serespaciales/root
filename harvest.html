@@ -1,41 +1,84 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seed Finder</title>
-    <link rel="stylesheet" href="harvest.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Harvest Viewer</title>
+  <link rel="stylesheet" href="harvest.css" />
 </head>
-<body>
-    <div id="header-container">
-        <h1>harvest</h1>
-        <form id="seed-finder">
-            <label>
-                search your seed id here
-                <input type="text" id="seedId" name="seed" maxlength="7" required>
-            </label>
-            <button type="button" id="lookupBtn">search seed</button>
-            <div id="seedError"></div> <!-- Moved here for better UX -->
-        </form>
+<body data-mode="view">
+  <div id="header-container">
+    <h1>harvest</h1>
+    <form id="seed-finder" onsubmit="event.preventDefault(); onLookup();">
+      <label for="seedId">Search your seed ID here</label>
+      <input
+        type="text"
+        id="seedId"
+        name="seed"
+        maxlength="7"
+        required
+        aria-label="Seed ID input"
+      />
+      <button type="submit" id="lookupBtn">Search Seed</button>
+      <div id="seedError"></div>
+    </form>
+  </div>
+
+  <div id="main-content" style="display: flex; gap: 1rem;">
+    <!-- Original (“Plant”) canvas & summary -->
+    <div id="original-container" style="flex:1; text-align:center;">
+      <h2>plant</h2>
+      <div id="canvas-wrapper">
+        <!-- placeholder so initializeCanvas() can remove and re-create -->
+        <canvas></canvas>
+      </div>
+      <div id="harvest-summary">Last update: Not loaded</div>
     </div>
-    <div id="main-content">
-        <div id="seed-container">
-            <h2>plant</h2>
-            <div id="canvas-wrapper"></div> <!-- Seed canvas container -->
-            <div id="harvest-summary">Last update:</div>
-        </div>
-        <div id="growing-container">
-            <h2>harvesting</h2>
-            <div id="growing-wrapper"></div> <!-- Growing canvas container -->
-            <div id="growing-summary">Methods used:<br>Days elapsed: 0/21<br>Last update:</div>
-            <button id="seedFullscreenBtn">Fullscreen</button>
-        </div>
+
+    <!-- Growing (“Harvesting”) section -->
+    <div id="growing-container" class="no-growth" style="flex:1; text-align:center;">
+      <h2>harvesting</h2>
+
+      <!-- shown when no growth yet -->
+      <div
+        id="no-growth-message"
+        style="display: none; background: green; color: white; padding: 10px;"
+      >
+        No growth applied. Return to Root and click “Apply Growth” to start evolution.
+      </div>
+
+      <!-- wrapper for the growing-canvas -->
+      <div id="growing-wrapper">
+        <!-- placeholder so initializeCanvas() can remove and re-create -->
+        <canvas></canvas>
+      </div>
+
+      <!-- growth summary stats (hidden until JS toggles it) -->
+      <div id="growing-summary" style="display: none; margin-top:1rem;">
+        Methods used:<br />
+        Sun: <span id="sun-value">0</span><br />
+        Water: <span id="water-value">0</span><br />
+        Vitamins: <span id="vitamins-value">0</span><br />
+        Days elapsed:
+          <span id="days-elapsed">0</span>/<span id="total-days">21</span><br />
+        Last update:
+          <span id="growth-last-update"></span>
+      </div>
+
+      <button type="button" id="seedFullscreenBtn" style="margin-top:1rem;">
+        Fullscreen
+      </button>
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
-    <script src="common.js"></script>
-    <script src="growth.js"></script> <!-- Ensure growth.js is included -->
-    <script src="harvest.js"></script>
+  </div>
+
+  <!-- p5.js and Firebase -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <!-- Your scripts -->
+  <script src="common.js"></script>
+  <script src="growth.js"></script>
+  <script src="harvest.js"></script>
 </body>
 </html>

@@ -103,7 +103,7 @@ window.loadSeed = function(data) {
           const distortion = typeof gradient.distortion === 'number' ? gradient.distortion : 0;
 
           return [ cellKey, {
-            type: visualObj.type || layer.type || 'empty',
+            type: visualObj.type || layer.type || 'gradient',
             colors,
             offset,
             direction,
@@ -301,9 +301,9 @@ window.drawSeed = function(p, isGrowing = false) {
 
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
-        const key = `${r}-${c}`;
+        const key = `${r},${c}`;
         let visual = visuals[key] || {
-          type: 'empty',
+          type: 'gradient',
           colors: [],
           offset: 0,
           direction: 0,
@@ -425,6 +425,19 @@ function drawShape(p, w, h, shapeType = "circle", fillColor = '#ffffff', strokeC
     return;
   }
 
+  //BREATHING LOGIC FOR SHAPES
+
+  // --- Calcular factor “breathing” ---
+  const t = p.millis() / 1000; // tiempo en segundos
+  const amp   = self.breathAmplitude  || 0;    // cuánto escala (ej 0.1 = ±10%)
+  const freq  = self.breathSpeed      || 1;    // pulsaciones por segundo
+  const phase = self.breathPhase      || 0; 
+  const breatheFactor = 1 + amp * p.sin(p.TWO_PI * freq * t + phase);
+
+  // recalcula el radio base con ese factor
+  const rScaled = baseR * breatheFactor;
+
+
   function isConnectedWith(r2, c2) {
     const neighbor = visuals[`${r2}-${c2}`]?.shape;
     return neighbor && neighbor.shapeType === shapeType;
@@ -442,13 +455,13 @@ function drawShape(p, w, h, shapeType = "circle", fillColor = '#ffffff', strokeC
   p.rotate(rotationRad);
 
   if (shapeType === "circle") {
-    drawCircleConnected(p, w, h, baseR, neighbors, fillColor, strokeColor);
+    drawCircleConnected(p, w, h, rScaled, neighbors, fillColor, strokeColor);
   } else if (shapeType === "square") {
-    drawSquareConnected(p, w, h, baseR, neighbors, fillColor, strokeColor);
+    drawSquareConnected(p, w, h, rScaled, neighbors, fillColor, strokeColor);
   } else if (shapeType === "star") {
-    drawStarConnected(p, w, h, baseR, neighbors, fillColor, strokeColor, 5);
+    drawStarConnected(p, w, h, rScaled, neighbors, fillColor, strokeColor, 5);
   } else if (shapeType === "organic") {
-    drawOrganicConnected(p, w, h, baseR, neighbors, fillColor, strokeColor);
+    drawOrganicConnected(p, w, h, rScaled, neighbors, fillColor, strokeColor);
   } else {
     console.warn(`Invalid shapeType: ${shapeType}`);
   }
@@ -592,3 +605,5 @@ function drawGradient(p, gradient) {
   p.rect(-w / 2 + dx, -h / 2 + dy, w - 2 * dx, h - 2 * dy);
   p.pop();
 }
+
+

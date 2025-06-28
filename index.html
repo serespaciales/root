@@ -83,6 +83,10 @@
                 <option value="organic">Organic</option>
               </select>
             </label>
+            <label>Breath Amplitude</label>
+            <input id="breath-amplitude" type="range" min="0" max="0.5" step="0.01" value="0.1">
+            <label>Breath Speed</label>
+            <input id="breath-speed"     type="range" min="0" max="3"   step="0.1"  value="1">
             <label>Fill <input type="color" id="shape-fill-color" value="#00000080"></label>
             <label>Stroke <input type="color" id="shape-stroke-color" value="#000000"></label>
             <label>Size <input type="range" id="shape-size" min="0" max="100" value="70"></label>
@@ -118,8 +122,8 @@
             <div id="active-images" style="display: flex; flex-direction: column; gap: 10px;"></div>
           </div>
           <div class="tool-options" id="options-grid">
-            <label>Rows <input name="rows" type="range" min="1" max="24" value="6"></label>
-            <label>Cols <input name="columns" type="range" min="1" max="24" value="6"></label>
+            <label>Rows <input name="rows" type="range" min="1" max="100" value="6"></label>
+            <label>Cols <input name="columns" type="range" min="1" max="100" value="6"></label>
             <label>Color <input type="color" id="gridColor" value="#000000"></label>
             <label>Opacity <input type="range" id="gridOpacity" min="0" max="100" value="100"></label>
             <button id="editGridConfirm">Confirm Grid</button>

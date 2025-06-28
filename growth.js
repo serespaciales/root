@@ -59,29 +59,36 @@ class GrowthManager {
     };
 
     seedsCol.doc(this.seedId).get()
-      .then(doc => {
-        if (!doc.exists) throw new Error('Seed not found');
-        const original = doc.data().layers || [];
-        return seedsCol.doc(this.seedId).update({
-          originalLayers: original,
-          growthConfig: cfg,
-          growthProgress: 0,
-          locked: true,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      })
-      .then(() => {
-        this.config = cfg;
-        this.progress = 0;
-        this.isGrowing = true;
-        this._updateUI();
-        this._lockUI();
-        // render first visual update, then start interval
-        return this._renderStep();
-      })
-      .then(() => this._startInterval())
-      .catch(console.error);
-  }
+  .then(async doc => {
+    if (!doc.exists) throw new Error('Seed not found');
+    const data = doc.data();
+
+    const seedDoc = {
+      seed: this.seedId,
+      gridConfig: data.gridConfig,
+      originalLayers: data.originalLayers || data.layers || [],
+      growthConfig: cfg, // asegúrate de tener cfg definido correctamente antes
+      growthProgress: 0,
+      locked: true,
+      updatedAt: firebase.firestore.Timestamp.now()
+    };
+
+    await window.saveToFirestore(seedDoc);
+
+    })
+    .then(() => {
+      this.config   = cfg;
+      this.progress = 0;
+      this.isGrowing= true;
+      this._updateUI();
+      this._lockUI();
+      // render primero, luego intervalo
+      return this._renderStep();
+    })
+    .then(() => this._startInterval())
+    .catch(console.error);
+  // =====================
+}
 
   /**
    * Stop growth when complete, re-enable UI.
@@ -136,37 +143,46 @@ class GrowthManager {
    */
   _renderStep() {
     this._lastRender = this._lastRender.then(() => {
-      return seedsCol.doc(this.seedId).get().then(doc => {
+      return seedsCol.doc(this.seedId).get().then(async doc => {
         if (!doc.exists) throw new Error('Seed not found');
         const data = doc.data();
-        const base = data.originalLayers || data.layers || [];
+  
+        // 1) Clona la capa base y aplica tu efecto a `layers`
+        const base   = data.originalLayers || data.layers || [];
         const layers = structuredClone(base);
-        const prog = this.progress / 100;
+        const prog   = this.progress / 100;
         const randOffset = Math.random() * 0.1;
-        const randVar = Math.random() * 0.2 - 0.1;
+        const randVar    = Math.random() * 0.2 - 0.1;
         const syncFactor = 0.3;
+        // … código que muta `layers` con _applyEffect …
   
-        // Apply effects
-        layers.forEach(layer => {
-          Object.values(layer.visuals || {}).forEach(vis => {
-            this._applyEffect(vis, prog, this.config, randOffset, randVar, syncFactor);
-          });
-        });
+        // 2) Genera timestamps y arma el seedDoc completo
+        const now = firebase.firestore.Timestamp.now();
+        const seedDoc = {
+          seed:           this.seedId,
+          name:           this.seedId,
+          gridConfig:     data.gridConfig,
+          originalLayers: data.originalLayers || [],
+          layers,                     // tus layers ya mutados
+          plantedAt:      data.plantedAt || now,
+          updatedAt:      now,
+          lastUpdate:     now,
+          growthConfig:   data.growthConfig,
+          growthProgress: this.progress,
+          locked:         this.isGrowing
+        };
   
-        // Draw locally
-        window.layers = layers;
-        if (typeof loadSeed === 'function') loadSeed({ layers, gridConfig: data.gridConfig });
+        // 3) Guarda TODO el documento de una vez
+        await window.saveToFirestore(seedDoc);
   
-        // Update Firestore with the entire layers array
-        return seedsCol.doc(this.seedId).update({
-          layers: layers,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        // 4) Retorna para encadenar correctamente
+        return;
       });
     }).catch(console.error);
   
     return this._lastRender;
   }
+  
   /**
    * Internal: apply per-visual growth logic based on type.
    */
@@ -256,27 +272,43 @@ class GrowthManager {
    */
   cloneSeed() {
     seedsCol.doc(this.seedId).get()
-      .then(doc => {
+      .then(async doc => {
         if (!doc.exists) throw new Error('Seed not found');
         const data = doc.data();
-        const layers = structuredClone(data.originalLayers||data.layers);
-        const newId = generateSeed();
-        return seedsCol.doc(newId).set({
-          layers,
-          originalLayers,
-          gridConfig: data.gridConfig,
-          plantedAt: firebase.firestore.FieldValue.serverTimestamp(),
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-          locked: false,
+  
+        // Clona originalLayers o layers
+        const original = structuredClone(data.originalLayers || data.layers);
+        const newId    = generateSeed();
+  
+        // Genera timestamps
+        const now = firebase.firestore.Timestamp.now();
+  
+        // Construye el seedDoc completo
+        const seedDoc = {
+          seed:           newId,
+          name:           newId,
+          gridConfig:     data.gridConfig,
+          originalLayers: original,
+          layers:         original,   // parte sin crecimiento
+          plantedAt:      now,
+          updatedAt:      now,
+          growthConfig:   null,
           growthProgress: 0,
-          growthConfig: null
-        }).then(() => newId);
+          locked:         false
+        };
+  
+        // Guarda con la plantilla completa
+        await window.saveToFirestore(seedDoc);
+  
+        return newId;
       })
-      .then(id => window.location.search = `?seed=${id}`)
+      .then(id => {
+        // Redirige a la nueva seed
+        window.location.search = `?seed=${id}`;
+      })
       .catch(console.error);
   }
-}
-
+}  
 // Export singleton
 const growthManager = new GrowthManager();
 window.growthManager = growthManager;

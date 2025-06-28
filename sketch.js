@@ -57,7 +57,7 @@ let gridPoints = [];
 let useUnifiedOffset = false;
 let typedText = "";
 let gridColor = "#000000";
-let gridOpacity = 255;
+let gridOpacity = 100;
 let loadedImage = null;
 let topZIndex = 1000;
 let gradientBuffer;
@@ -96,10 +96,7 @@ let textSettings = {
 
 
 
-/**
- * Genera un seed de 7 caracteres alfanuméricos (A–Z, a–z, 0–9)
- */
-// Replace the SEED LOGIC section (lines ~100-170) with this:
+// THIS IS THE LOGIC FOR SAVING ON FIRESTORE FROM THE EDIT TOOL 
 function markChanges() {
   hasUnsavedChanges = true;
 }
@@ -108,33 +105,42 @@ async function saveToFirestore() {
   if (MODE === 'view') return;
 
   try {
-    const sanitizedLayers = window.layers.map(layer => ({
+    const now = firebase.firestore.Timestamp.now();
+
+    const sanitizedLayers = window.layers.map((layer, index) => ({
       id: layer.id || generateLayerID(),
-      name: layer.name || `Layer ${window.layers.indexOf(layer) + 1}`,
+      name: layer.name || `Layer ${index + 1}`,
       type: layer.type || 'gradient',
-      color: layer.color || randomColorFromNeonPalette(),
+      color: typeof layer.color === 'string' ? layer.color : randomColorFromNeonPalette(),
       visible: typeof layer.visible === 'boolean' ? layer.visible : true,
       visuals: Object.keys(layer.visuals || {}).reduce((acc, key) => {
         const visual = { ...layer.visuals[key] };
-        delete visual.pg; // Eliminar propiedades no serializables
+        delete visual.pg;
+
         if (visual.colors) {
           visual.colors = visual.colors.map(c => typeof c === 'string' ? c : c.toString().replace(/ /g, ''));
         }
+
         if (visual.text && visual.text.color) {
           visual.text.color = typeof visual.text.color === 'string' ? visual.text.color : visual.text.color.toString().replace(/ /g, '');
         }
+
         if (visual.shape) {
           visual.shape = {
             shapeType: visual.shape.shapeType || 'circle',
-            fillColor: typeof visual.shape.fillColor === 'string' ? visual.shape.fillColor : (visual.shape.fillColor ? visual.shape.fillColor.toString().replace(/ /g, '') : '#ffffff'),
-            strokeColor: typeof visual.shape.strokeColor === 'string' ? visual.shape.strokeColor : (visual.shape.strokeColor ? visual.shape.strokeColor.toString().replace(/ /g, '') : '#000000'),
+            fillColor: typeof visual.shape.fillColor === 'string' ? visual.shape.fillColor : '#ffffff',
+            strokeColor: typeof visual.shape.strokeColor === 'string' ? visual.shape.strokeColor : '#000000',
             size: visual.shape.size || 1,
             opacity: visual.shape.opacity || 1,
             extrudePct: visual.shape.extrudePct || 0,
             subdivisions: visual.shape.subdivisions || 0,
-            tint: visual.shape.tint || null
+            tint: visual.shape.tint || null,
+            breathAmplitude: visual.shape.breathAmplitude || 0,
+            breathSpeed:     visual.shape.breathSpeed     || 0,
+            breathPhase:     visual.shape.breathPhase     || 0
           };
         }
+
         acc[key] = visual;
         return acc;
       }, {})
@@ -144,18 +150,48 @@ async function saveToFirestore() {
       rows: parseInt(sliders.rows?.value?.() || 2, 10),
       cols: parseInt(sliders.columns?.value?.() || 2, 10),
       canvasWidth: width || 800,
-      canvasHeight: height || 600
+      canvasHeight: height || 600,
+      gridColor,
+      gridOpacity
+      
     };
 
+    const docRef = seedsCol.doc(seed);
+    const doc = await docRef.get();
+    const alreadyExists = doc.exists;
+
+    const originalLayers = sanitizedLayers;
+
     const data = {
-      seedCode: seed,
-      layers: sanitizedLayers,
+      seed: seed,
+      name: seed,
       gridConfig,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      layers: sanitizedLayers,
+      originalLayers,
+      plantedAt: alreadyExists ? doc.data().plantedAt || now : now,
+      updatedAt: now,
+      lastUpdate: now,
+      growthProgress: alreadyExists ? doc.data().growthProgress || 0 : 0,
+      growthConfig: alreadyExists
+        ? doc.data().growthConfig || {
+            sun: 0,
+            water: 0,
+            vitamins: 0,
+            days: 21,
+            startDate: now
+          }
+        : {
+            sun: 0,
+            water: 0,
+            vitamins: 0,
+            days: 21,
+            startDate: now
+          },
+      locked: alreadyExists ? doc.data().locked ?? false : false
     };
 
     console.log('Saving data to Firestore:', JSON.stringify(data, null, 2));
-    await seedsCol.doc(seed).set(data, { merge: true });
+    await docRef.set(data, { merge: true });
 
     console.log(`✅ Auto-saved seed ${seed} to Firestore`);
     hasUnsavedChanges = false;
@@ -164,6 +200,7 @@ async function saveToFirestore() {
     console.warn(`❌ Failed to auto-save: ${err.message}`);
   }
 }
+
 
 function debounceSaveToFirestore() {
   clearTimeout(saveTimeout);
@@ -998,7 +1035,7 @@ function drawVisuals() {
   }
 }
 
-// --- Gradiente animado ---
+// --- ANIMATED GRADIENT FINAL LOGIC---
 /**
  * Dibuja un degradado suave y relleno dentro del quad
  * definido por p00→p10→p11→p01 
@@ -1008,8 +1045,27 @@ function drawAnimatedGradient(p00, p10, p11, p01, colors, offset) {
   // número de tiras basado en la longitud de los lados
   const leftLen  = dist(p00.x, p00.y, p01.x, p01.y);
   const rightLen = dist(p10.x, p10.y, p11.x, p11.y);
-  const steps    = ceil(max(leftLen, rightLen));
+  const maxLen   = max(leftLen, rightLen);
 
+  // Dimensiones de la grid
+  const rows = window.gridConfig.rows || 1;
+  const cols = window.gridConfig.cols || 1;
+
+  // ¿Cuántas tiras queremos POR CELDA?
+  const stripesPerCell = 1;
+
+  // Tamaño de cada celda en la dirección mayor
+  const cellWidth  = abs(p10.x - p00.x) / cols;
+  const cellHeight = abs(p01.y - p00.y) / rows;
+  const pixelStep  = max(cellWidth, cellHeight) / stripesPerCell;
+
+  // Número de pasos = longitud total / píxeles por paso
+  // Aseguramos al menos 10 tiras y como máximo la longitud natural
+  const steps = constrain(
+    ceil(maxLen / pixelStep),
+    10,
+    ceil(maxLen)
+  );
   noStroke();
   for (let i = 0; i < steps; i++) {
     const t0 = i    / steps;
@@ -1651,6 +1707,9 @@ function drawOnCellUnderMouse() {
               colors: [color1, color2, color3],
               offset: random(0, 1000)
             };
+            markChanges();
+            saveVisuals();
+            debounceSaveToFirestore();
 
           } else if (activeTool === "texture") {
             // Usa los selects y ranges de texture
@@ -1661,6 +1720,9 @@ function drawOnCellUnderMouse() {
                 density: parseInt(document.getElementById("texture-density").value)
               }
             };
+            markChanges();
+            saveVisuals();
+            debounceSaveToFirestore();
 
           } else if (activeTool === "shape") {
             visuals[key] = {
@@ -1669,10 +1731,17 @@ function drawOnCellUnderMouse() {
                 shapeType: document.getElementById("shape-type").value,
                 fillColor: document.getElementById("shape-fill-color").value,
                 strokeColor: document.getElementById("shape-stroke-color").value,
-                size: parseInt(document.getElementById("shape-size").value)
+                size: parseInt(document.getElementById("shape-size").value),
+                breathAmplitude: parseFloat(document.getElementById('breath-amplitude').value),
+                breathSpeed: parseFloat(document.getElementById('breath-speed').value),
+                // una fase aleatoria para que no respiren todos al unísono:
+                breathPhase: random(0, TWO_PI)
               }
             };
             if (!lastShapeCells.includes(key)) lastShapeCells.push(key);
+            markChanges();
+            saveVisuals();
+            debounceSaveToFirestore();
 
           } else if (activeTool === "text") {
             visuals[key] = {
@@ -1690,6 +1759,9 @@ function drawOnCellUnderMouse() {
                 kerning: textSettings.letterSpacing
               }
             };
+            markChanges();
+            saveVisuals();
+            debounceSaveToFirestore();
             
 
           } else if (activeTool === "image" && loadedImage) {
@@ -1706,9 +1778,15 @@ function drawOnCellUnderMouse() {
               offsetX: 0,
               offsetY: 0
             };
+            markChanges();
+            saveVisuals();
+            debounceSaveToFirestore();
 
           } else if (activeTool === "erase") {
             delete visuals[key];
+            markChanges();
+            saveVisuals();
+            debounceSaveToFirestore();
           }
 
           lastCellKey = key;
@@ -1803,7 +1881,7 @@ function setupGridEditingLogic() {
     gridColor = this.value;
   });
   document.getElementById('gridOpacity').addEventListener('input', function() {
-    gridOpacity = map(this.value, 0, 100, 0, 255);
+    gridOpacity = map(this.value, 0, 100,0, 255);
   });
   sliders.rows.input   (updateGridPositions);
   sliders.columns.input(updateGridPositions);
@@ -1845,12 +1923,23 @@ function drawTexture(w,h,settings) {
 
 function drawShape(w, h, shapeType = "circle", fillColor = '#000000', strokeColor = '#ffffff', size = 100, r = 0, c = 0, visuals = {}) {
   if (MODE === 'view') return;
-  const scale = constrain(size / 100, 0, 1);
-  const baseR = min(w, h) * 0.5 * scale;
-  const rotationRad = 0;
 
+  // 1) Recupera los datos de este shape
   const self = visuals[`${r}-${c}`]?.shape;
   if (!self) return;
+
+  // 2) Calcula el pulso de breathing
+  const t     = millis() / 1000;                      // segundos desde que arranca p5
+  const amp   = self.breathAmplitude  || 0;           // ej. 0.1 → ±10%
+  const freq  = self.breathSpeed      || 1;           // ciclos por segundo
+  const phase = self.breathPhase      || 0;           // fase inicial aleatoria
+  const pulse = 1 + amp * Math.sin(TWO_PI * freq * t + phase);
+
+  // 3) Ajusta el tamaño según el pulso
+  const effectiveSize = size * pulse;
+  const scale         = constrain(effectiveSize / 100, 0, 1);
+  const baseR         = min(w, h) * 0.5 * scale;
+  const rotationRad   = 0;
 
   // Vecinos compatibles
   function isConnectedWith(r2, c2) {
@@ -3430,7 +3519,7 @@ window.loadSeed = function(data) {
   console.log(`✅ Seed ${seed} loaded from layers`, window.layers);
 };
 
-///////GROW
+///////=========================GROW USER INTERACTION============================////////////////
 
 function setupGrowthIntegration() {
   if (MODE !== 'edit') {

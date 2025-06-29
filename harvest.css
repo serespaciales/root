@@ -174,28 +174,10 @@ h2 {
 }
 
 
-#growing-container {
-  width: 50%;
-  height: 100%;
-  max-width: 300px;
-  margin: 50px;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  align-items: right;
-}
 
-#growing-container.no-growth {
-  background-color: transparent;/* Bright green background */
-  justify-content: center; /* Center content vertically */
-  align-items: center; /* Center content horizontally */
-}
 
 
 #canvas-wrapper, #growing-wrapper {
   display: block;
   margin: 0 auto;
-}
-#canvas-wrapper canvas, #growing-wrapper canvas {
-  display: block;
 }

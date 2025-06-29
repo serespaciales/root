@@ -1,3 +1,4 @@
+const gradientCache = {};
 const DAY_IN_MINUTES = 1; // 1 day = 1 minute for debugging
 const firebaseConfig = {
   apiKey: "AIzaSyAN1_EbV_HesrVr2PUZEqwH5xkT23jNXko",
@@ -166,108 +167,7 @@ window.loadSeed = function(data) {
   console.log('✅ Seed loaded from layers', JSON.stringify(window.layers, null, 2));
 };
 
-function drawSeed(p, isGrown) {
-  const { rows, cols } = window.gridConfig || { rows: 1, cols: 1 };
-  const cellW = p.width / cols;
-  const cellH = p.height / rows;
 
-  if (!window.layers) return;
-
-  for (let l = 0; l < window.layers.length; l++) {
-    const layer = window.layers[l];
-    if (!layer.visuals) continue;
-
-    for (const [cellKey, visual] of Object.entries(layer.visuals)) {
-      const [col, row] = cellKey.split(',').map(Number);
-      const x = col * cellW;
-      const y = row * cellH;
-
-      p.push();
-      p.translate(x + cellW / 2, y + cellH / 2);
-
-      if (visual.type === 'gradient') {
-        const colors = visual.colors || ['#000000', '#ffffff', '#000000'];
-        const direction = visual.direction || 0;
-        const gradientLength = Math.min(cellW, cellH);
-
-        const c0 = p.color(colors[0]);
-        const c1 = p.color(colors[1]);
-        for (let i = 0; i < gradientLength; i++) {
-          const inter = p.lerpColor(c0, c1, i / gradientLength);
-          p.stroke(inter);
-          if (direction === 0) p.line(-cellW / 2 + i, -cellH / 2, -cellW / 2 + i, cellH / 2); // horizontal
-          else p.line(-cellW / 2, -cellH / 2 + i, cellW / 2, -cellH / 2 + i); // vertical
-        }
-      } else if (visual.type === 'shape') {
-        const s = visual.shape || {};
-        p.fill(s.fillColor || '#ffffff');
-        p.stroke(s.strokeColor || '#000000');
-        p.ellipse(0, 0, s.size * cellW || 20);
-      }
-
-      else if (visual.type === "shape" && visual.shape) {
-        const s = visual.shape;
-        console.log(`Rendering shape at ${key}:`, s);
-        drawShape(
-          p,
-          w,
-          h,
-          s.shapeType || "circle",
-          s.fillColor   || "#ffffff",
-          s.strokeColor || "#000000",
-          s.size        || 1,
-          r, c,
-          visuals
-        );
-        if (isGrowing && visual.bloom) applyBloomExpansion(p, visual); // usa esta para formas
-      }
-      
-      p.pop();
-    }
-  }
-}
-
-
-function applyVineCurl(p, visual, w, h) {
-  if (visual.text.extrude) p.scale(1 + visual.text.extrude / 100);
-  if (visual.text.branches) {
-    for (let i = 0; i < visual.text.branches; i++) {
-      p.push();
-      p.translate(Math.sin(i) * 10, Math.cos(i) * 10);
-      p.text(visual.text.content, w / 2, h / 2);
-      p.pop();
-    }
-  }
-  if (visual.text.hue) p.tint(visual.text.hue, 255);
-}
-
-function applyChlorophyllRadiance(p, visual) {
-  if (visual.bloom.sigma) p.filter(p.BLUR, visual.bloom.sigma * (visual.bloom.intensity || 1));
-}
-
-function applyBloomExpansion(p, visual) {
-  if (visual.shape.extrudePct) {
-    const scaleFactor = Math.max(0.1, Math.min(1 + visual.shape.extrudePct / 100, 5));
-    console.log(`Applying bloom expansion: scale=${scaleFactor}`);
-    p.scale(scaleFactor);
-  }
-  if (visual.shape.subdivisions) subdivideShape(p, visual.shape.subdivisions);
-  if (visual.shape.tint) {
-    const validTints = {
-      'cerulean': 'rgb(0, 123, 255)',
-      'rose-gold': 'rgb(183, 110, 121)',
-      'neon-lavender': 'rgb(230, 230, 250)',
-      'neon-azure': 'rgb(0, 255, 255)'
-    };
-    const tintColor = validTints[visual.shape.tint] || '#ffffff';
-    p.tint(tintColor);
-  }
-}
-
-function applyMossMirage(p, visual, w, h) {
-  if (visual.speckles.pct) addSpeckles(p, w, h, visual.speckles.pct, visual.speckles.radius, visual.tint);
-  if (visual.blur) p.filter(p.BLUR, visual.blur);
-}
 window.drawSeed = function(p, isGrowing = false) {
   console.log('Drawing seed, frameCount:', p.frameCount, 'isGrowing:', isGrowing, 'layers:', window.layers);
   p.clear();
@@ -338,9 +238,13 @@ window.drawSeed = function(p, isGrowing = false) {
             drawAnimatedGradient(p,
               { x: 0, y: 0 },
               { x: w, y: 0 },
+              { x: w, y: h },
               { x: 0, y: h },
               visual.colors,
-              visual.offset || 0
+              visual.offset || 0,
+              key,
+              w,
+              h
             );
             if (isGrowing) applyChlorophyllRadiance(p, visual);
             if (isGrowing && visual.speckles.pct) applyMossMirage(p, visual, w, h);
@@ -386,33 +290,176 @@ function addSpeckles(p, w, h, pct, radius, tint) {
 function subdivideShape(p, subdivisions) {
   p.scale(1 + subdivisions * 0.1); // Basic implementation
 }
+//===========GRADIENT AND HELPERS AND SO ON =======================
+// --- Dibujar los contenidos visuales por celda ---
+// ——————— Helpers ———————
 
-function drawAnimatedGradient(p, p00, p10, p11, p01, colors, offset) {
-  const steps = Math.max(p.dist(p00.x, p00.y, p01.x, p01.y), p.dist(p10.x, p10.y, p11.x, p11.y));
-  for (let i = 0; i < steps; i++) {
-    const t0 = i / steps;
-    const t1 = (i + 1) / steps;
+// Crea un gradiente vertical en un p5.Graphics (usado para performance)
+//there are two functions doing almost similar things, but one is for seeds on demand, and one is for visuals, specially optimized for performance 
 
-    const A = { x: p.lerp(p00.x, p01.x, t0), y: p.lerp(p00.y, p01.y, t0) };
-    const B = { x: p.lerp(p10.x, p11.x, t0), y: p.lerp(p10.y, p11.y, t0) };
-    const C = { x: p.lerp(p10.x, p11.x, t1), y: p.lerp(p10.y, p11.y, t1) };
-    const D = { x: p.lerp(p00.x, p01.x, t1), y: p.lerp(p00.y, p01.y, t1) };
+function drawAnimatedGradient(p) {
+  const cache = window.gradientCache || (window.gradientCache = {});
 
-    let tt = (t0 + offset + p.frameCount * 0.01) % 1;
-    let col = (colors.length === 3)
-      ? (tt < 0.5
-        ? p.lerpColor(p.color(colors[0]), p.color(colors[1]), tt * 2)
-        : p.lerpColor(p.color(colors[1]), p.color(colors[2]), (tt - 0.5) * 2))
-      : p.lerpColor(p.color(colors[0]), p.color(colors[1] || colors[0]), tt);
-    p.fill(col);
-    p.beginShape();
-    p.vertex(A.x, A.y);
-    p.vertex(B.x, B.y);
-    p.vertex(C.x, C.y);
-    p.vertex(D.x, D.y);
-    p.endShape(p.CLOSE);
+  const {
+    rows, cols,
+    canvasWidth = w,
+    canvasHeight = h
+  } = window.gridConfig;
+
+  const cellWidth = canvasWidth / cols;
+  const cellHeight = canvasHeight / rows;
+
+  for (const visual of window.layers || []) {
+    if (visual.type !== 'gradient') continue;
+
+    const { col, row, colors = [], offset = 0 } = visual;
+    const key = `r${row}c${col}`;
+
+    if (cellWidth <= 0 || cellHeight <= 0) {
+      console.warn(`Invalid size for gradient buffer: ${cellWidth}x${cellHeight} at ${key}`);
+      continue;
+    }
+
+    if (!cache[key]) {
+      cache[key] = p.createGraphics(cellWidth, cellHeight);
+    }
+
+    const pg = cache[key];
+
+    updateGradientBuffer(pg, colors, offset, p.frameCount); // Esta debe estar definida
+
+    const x = col * cellWidth;
+    const y = row * cellHeight;
+
+    p.image(pg, x, y);
   }
 }
+
+
+function updateGradientBuffer(pg, colors, offset, frameCountOverride) {
+  const steps = pg.height;
+  pg.noStroke();
+  pg.clear();
+
+  const fc = frameCountOverride !== undefined ? frameCountOverride : (typeof frameCount !== "undefined" ? frameCount : 0);
+
+  // Detectar si estamos en modo instancia
+  const p = pg._renderer._pInst || null;
+
+  // Funciones compatibles con modo global e instancia
+  const _color = p ? p.color.bind(p) : color;
+  const _lerpColor = p ? p.lerpColor.bind(p) : lerpColor;
+
+  for (let i = 0; i < steps; i++) {
+    const t = i / steps;
+    const tt = (t + offset + fc * 0.01) % 1;
+
+    const colr = (colors.length === 3)
+      ? (tt < 0.5
+          ? _lerpColor(_color(colors[0]), _color(colors[1]), tt * 2)
+          : _lerpColor(_color(colors[1]), _color(colors[2]), (tt - 0.5) * 2))
+      : _lerpColor(_color(colors[0]), _color(colors[1] || "#000000"), tt);
+
+    pg.stroke(colr);
+    pg.line(0, i, pg.width, i);
+  }
+}
+
+
+
+function updateGlobalGradient(colors, offset = 0) {
+  const steps = gradientBuffer.height;
+
+  gradientBuffer.noStroke();
+  gradientBuffer.clear();
+
+  for (let i = 0; i < steps; i++) {
+    const t = i / steps;
+    const tt = (t + offset + frameCount * 0.01) % 1;
+
+    const colr = (colors.length === 3)
+      ? (tt < 0.5
+          ? lerpColor(color(colors[0]), color(colors[1]), tt * 2)
+          : lerpColor(color(colors[1]), color(colors[2]), (tt - 0.5) * 2))
+      : lerpColor(color(colors[0]), color(colors[1] || "#000000"), tt);
+
+    gradientBuffer.stroke(colr);
+    gradientBuffer.line(0, i, gradientBuffer.width, i);
+  }
+
+
+  function drawGradient(p, gradient) {
+    const { colors, direction = 0, scale = 1, distortion = 0, offset = 0 } = gradient;
+    const w = p.width;
+    const h = p.height;
+  
+    p.push();
+    p.translate(w / 2, h / 2 + offset);
+    p.rotate(p.radians(direction));
+    p.scale(scale);
+  
+    const grad = p.drawingContext.createLinearGradient(-w / 2, 0, w / 2, 0);
+    const step = 1 / (colors.length - 1);
+    colors.forEach((color, i) => {
+      grad.addColorStop(i * step, color);
+    });
+  
+    p.drawingContext.fillStyle = grad;
+    const dx = distortion * 10;
+    const dy = distortion * 10;
+    p.rect(-w / 2 + dx, -h / 2 + dy, w - 2 * dx, h - 2 * dy);
+    p.pop();
+  }
+  
+}
+
+// 3) Recorre window.layers y pinta TODOS los gradients en su celda
+function drawAnimatedGradientInst(p) {
+  // Cache local a la instancia
+  const cache = p._gradientCache || (p._gradientCache = {});
+
+  // Extrae configuración de grid
+  const {
+    rows,
+    cols,
+    canvasWidth  = window.gridConfig.canvasWidth,
+    canvasHeight = window.gridConfig.canvasHeight
+  } = window.gridConfig;
+
+  const cellW = canvasWidth  / cols;
+  const cellH = canvasHeight / rows;
+
+  // Por cada capa
+  for (const layer of window.layers || []) {
+    // Por cada visual dentro de la capa
+    for (const [cellKey, visual] of Object.entries(layer.visuals || {})) {
+      if (visual.type !== 'gradient') continue;
+
+      // Tus claves vienen en "fila-columna"
+      const [row, col] = cellKey.split('-').map(Number);
+
+      // Validación mínima
+      if (!(row >= 0 && col >= 0 && cellW > 0 && cellH > 0)) continue;
+
+      // 1) obtener/crear buffer
+      const pg = _getCellBuffer(p, cache, row, col, cellW, cellH);
+
+      // 2) actualizar gradiente
+      updateGradientBufferInst(p, pg, visual.colors, visual.offset, p.frameCount);
+
+      // 3) dibujar buffer en posición correcta
+      p.image(pg, col * cellW, row * cellH);
+    }
+  }
+}
+
+
+
+//===========GRADIENT AND HELPERS AND SO ON =======================
+
+
+//===========SHAPE AND HELPERS AND SO ON =======================
+
 
 function drawShape(p, w, h, shapeType = "circle", fillColor = '#ffffff', strokeColor = '#ffffff', size = 100, r = 0, c = 0, visuals = {}) {
   const scale = p.constrain(size / 100, 0, 1);
@@ -567,6 +614,11 @@ function drawSquareConnected(p, w, h, r, neighbors, fillColor, strokeColor) {
   p.endShape(p.CLOSE);
 }
 
+//===========SHAPE AND HELPERS AND SO ON =======================
+
+
+//===========GRID  =======================
+
 function drawGrid(p, rows, cols, cellWidth, cellHeight) {
   p.noFill();
   p.stroke(0);
@@ -583,27 +635,39 @@ function drawGrid(p, rows, cols, cellWidth, cellHeight) {
   }
 }
 
-function drawGradient(p, gradient) {
-  const { colors, direction = 0, scale = 1, distortion = 0, offset = 0 } = gradient;
-  const w = p.width;
-  const h = p.height;
+//===========GRID  =======================
 
-  p.push();
-  p.translate(w / 2, h / 2 + offset);
-  p.rotate(p.radians(direction));
-  p.scale(scale);
 
-  const grad = p.drawingContext.createLinearGradient(-w / 2, 0, w / 2, 0);
-  const step = 1 / (colors.length - 1);
-  colors.forEach((color, i) => {
-    grad.addColorStop(i * step, color);
+
+//DISABLE UI AFTER GROWTH 
+
+function disableEditingControls() {
+  // Disable tool buttons
+  document.querySelectorAll('.tool-btn').forEach(btn => {
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
   });
-
-  p.drawingContext.fillStyle = grad;
-  const dx = distortion * 10;
-  const dy = distortion * 10;
-  p.rect(-w / 2 + dx, -h / 2 + dy, w - 2 * dx, h - 2 * dy);
-  p.pop();
+  // Disable sliders
+  document.querySelectorAll('input[type="range"]').forEach(slider => {
+    slider.disabled = true;
+  });
+  // Disable canvas interactions
+  if (canvas) {
+    canvas.elt.style.pointerEvents = 'none';
+  }
+  // Disable layer controls
+  document.querySelectorAll('.layer-entry input, .layer-entry button').forEach(el => {
+    el.disabled = true;
+  });
+  // Show locked message
+  const palette = document.getElementById('palette');
+  if (palette) {
+    const lockedMsg = document.createElement('div');
+    lockedMsg.id = 'locked-message';
+    lockedMsg.style.color = 'red';
+    lockedMsg.style.padding = '10px';
+    lockedMsg.textContent = 'This seed is locked for growth. Duplicate it to edit.';
+    palette.appendChild(lockedMsg);
+  }
 }
-
 

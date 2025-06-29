@@ -6,63 +6,63 @@ let refreshTimer;
 
 // Tracks whether any growth has occurred
 window.hasGrown = false;
+window.lastDrawnHour = null;
 
 
 // ========= Initialize both canvases once ========= //
-function initializeCanvas() {
+function initializeCanvas(seedId) { 
   console.log('initializeCanvas called');
   const canvasWrapper = document.getElementById('canvas-wrapper');
   const growingWrapper = document.getElementById('growing-wrapper');
   const w = window.gridConfig?.canvasWidth || 600;
   const h = window.gridConfig?.canvasHeight || 600;
-  const scaleFactor = 0.5;
 
+  window.globalFrameCount = 0;
+
+  fetchAndRenderSeed(seedId);
+  fetchAndRenderGrowth(seedId);
+  startGrowthPolling(seedId, 5000);
 
   //==================== THESE CALLS DRAW BOTH CANVAS ========================///
   // ORIGINAL SEED CANVAS
   window.seedCtrl = new p5(p => {
+    const scaleFactor = 0.2;
+  
     p.setup = () => {
+      // 1) Inicializa cache de gradientes
+      window.gradientCache = {};
+  
+      // 2) Patch de createGraphics para que todo buffer conozca a la instancia `p`
+      const _origCreateGraphics = p.createGraphics;
+      p.createGraphics = function(w, h) {
+        const pg = _origCreateGraphics.call(this, w, h);
+        // Asignamos siempre la instancia correcta
+        pg._renderer._pInst = p;
+        return pg;
+      };
+  
+      // 3) Creamos el canvas
+      const { canvasWidth: w, canvasHeight: h } = window.gridConfig;
       p.createCanvas(w * scaleFactor, h * scaleFactor)
        .parent(canvasWrapper);
+  
+      // No llamamos a noLoop(): queremos animación continua
     };
   
     p.draw = () => {
-      // 0) limpiar **una vez al inicio**
+      // 0) Limpiar y escalar
       p.clear();
-  
-      // 1) entrar en espacio escalado
       p.push();
       p.scale(scaleFactor);
   
-      // 2) dibujar la rejilla **antes** de los visuals
-      const {
-        rows, cols,
-        canvasWidth = w,
-        canvasHeight = h,
-        gridColor = '#000',
-        gridOpacity = 255
-      } = window.gridConfig;
-  
-      const cellW = canvasWidth / cols;
-      const cellH = canvasHeight / rows;
-      p.noFill();
-      p.stroke(gridColor);
-      p.drawingContext.globalAlpha = gridOpacity;
-      for (let c = 0; c <= cols; c++) {
-        const x = c * cellW;
-        p.line(x, 0, x, canvasHeight);
-      }
-      for (let r = 0; r <= rows; r++) {
-        const y = r * cellH;
-        p.line(0, y, canvasWidth, y);
-      }
-      p.drawingContext.globalAlpha = 1;
+      // 1) Dibuja rejilla (si la necesitas)
+      drawGrid(p);
   
       // 3) dibujar la seed ENCIMA
       if (window.originalLayers) {
         const prev = window.layers;
         window.layers = window.originalLayers;
-        drawSeed(p, window.layers);
+        drawSeedInst(p, window.layers);
         window.layers = prev;
       } else {
         p.background(200);
@@ -79,43 +79,143 @@ function initializeCanvas() {
   
   // GROWING SEED CANVAS
   window.growingCtrl = new p5(p => {
+    const scaleFactor = 0.2;
+    const MS_PER_HOUR = 1000 * 60 * 60;
+    let lastDrawnHour = -1;
+  
     p.setup = () => {
-      p.createCanvas(w * scaleFactor, h * scaleFactor)
-       .parent(growingWrapper);
-      p.noLoop();
+      p._gradientCache = {};
+  
+      const _origCreateGraphics = p.createGraphics;
+      p.createGraphics = function(w, h) {
+        const pg = _origCreateGraphics.call(this, w, h);
+        pg._renderer._pInst = p;
+        return pg;
+      };
+  
+      p.createCanvas(w * scaleFactor, h * scaleFactor).parent(growingWrapper);
     };
+  
     p.draw = () => {
+      p.clear();
       p.push();
       p.scale(scaleFactor);
+      drawGrid(p);
   
       if (window.hasGrown && window.currentLayers?.length) {
-        const backup = window.layers;
-        window.layers = window.currentLayers;
-        drawSeed(p, window.layers);
-        window.layers = backup;
+        const startDate = new Date(window.growthConfig?.startDate || new Date());
+        const days = window.growthConfig?.days || 21;
+        const totalHours = days * 24;
+  
+        const elapsedMs = Date.now() - startDate.getTime();
+        const elapsedHours = Math.floor(elapsedMs / MS_PER_HOUR);
+  
+        if (elapsedHours !== lastDrawnHour) {
+          lastDrawnHour = elapsedHours;
+  
+          const t = Math.min(Math.max(elapsedHours / totalHours, 0), 1);
+  
+          const { sun = 0, water = 0, vitamins = 0 } = window.growthConfig || {};
+          window.currentGrowthConfig = {
+            sun: sun * t,
+            water: water * t,
+            vitamins: vitamins * t
+          };
+  
+          console.log('🌿 Updated growth parameters:', window.currentGrowthConfig);
+        }
+  
+        drawSeedGrowthInst(p, window.currentGrowthConfig, window.currentLayers);
       } else {
         p.background(0);
         p.fill(255);
         p.textAlign(p.CENTER, p.CENTER);
-        p.text(
-          'No growth applied yet\nReturn to Root',
-          p.width/2,
-          p.height/2
-        );
+        p.textSize(16);
+        p.text('No growth applied yet\nReturn to Root', (w * scaleFactor) / 2, (h * scaleFactor) / 2);
       }
   
       p.pop();
     };
   });
   
-
   return true;
 }
+//==================== THESE CALLS DRAW BOTH CANVAS ========================///
+
+// ========== MERGE LAYERS FOR GROWTH =========//
+
+/**
+ * mergeLayers(originalLayers, currentLayers)
+ * @param {Array<Object>} originalLayers  Array base de layers (semilla inicial)
+ * @param {Array<Object>} currentLayers   Array mutado según crecimiento
+ * @returns {Array<Object>}               Nuevo array fusionado (deep clone)
+ */
+function mergeLayers(originalLayers, currentLayers) {
+  // Asegurar que son arrays
+  if (!Array.isArray(originalLayers)) return [];
+  currentLayers = Array.isArray(currentLayers) ? currentLayers : [];
+
+  // Map de currentLayers por id para lookup rápido
+  const currMap = new Map();
+  for (const layer of currentLayers) {
+    if (layer && layer.id != null) {
+      currMap.set(layer.id, layer);
+    }
+  }
+
+  // Para detectar extras al final
+  const origIds = new Set(originalLayers.map(l => l.id));
+
+  const merged = originalLayers.map(orig => {
+    // Deep-clone de la capa original (incluye .visuals, .shape, etc.)
+    const base = JSON.parse(JSON.stringify(orig));
+
+    const curr = currMap.get(orig.id);
+    if (curr) {
+      // 1) Merge de visuals: los de curr sobrescriben/añaden
+      const currVisuals = curr.visuals
+        ? JSON.parse(JSON.stringify(curr.visuals))
+        : {};
+      base.visuals = {
+        ...base.visuals,
+        ...currVisuals
+      };
+
+      // 2) Propiedades de curr (salvo visuals) sobrescriben
+      for (const key of Object.keys(curr)) {
+        if (key === 'id' || key === 'visuals') continue;
+        base[key] = JSON.parse(JSON.stringify(curr[key]));
+      }
+    }
+
+    return base;
+  });
+
+  // Anexar layers que solo estén en currentLayers (nuevas capas)
+  for (const curr of currentLayers) {
+    if (curr && curr.id != null && !origIds.has(curr.id)) {
+      merged.push(JSON.parse(JSON.stringify(curr)));
+    }
+  }
+
+  return merged;
+}
+
+
+
+// ========== MERGE LAYERS FOR GROWTH =========//
+
+
+
+
+
+
+
 
 // ========== DRAW GRID =========//
 // Draws grid lines with configurable color and opacity
 function drawGrid(p) {
-  console.log('drawGrid');
+  //console.log('drawGrid');
   const { rows, cols } = window.gridConfig;
   const gridColor = window.gridConfig.gridColor || '#000000';
   const gridOpacity = window.gridConfig.gridOpacity ?? 0.2;
@@ -138,62 +238,6 @@ function drawGrid(p) {
   p.pop();
 }
 
-// ========= Draw grid and visuals for a set of layers ========= //
-function drawSeed(p, layers) {
-  console.log('drawSeed called with', layers.length, 'layers');
-  const { rows, cols, canvasWidth, canvasHeight } = window.gridConfig;
-  const cellWidth = canvasWidth / cols;
-  const cellHeight = canvasHeight / rows;
-
-
-  for (const layer of layers) {
-    for (const [key, visual] of Object.entries(layer.visuals || {})) {
-      if (!visual || !visual.type) {
-        console.log('Skipping empty cell at', key);
-        continue; // skip empty or undefined visuals
-      }
-      const [r, c] = key.split('-').map(Number);
-      const x = c * cellWidth;
-      const y = r * cellHeight;
-
-      if (visual.type === 'gradient') {
-        console.log('drawSeed: gradient cell', key);
-        p.noStroke();
-        // call shared drawAnimatedGradient from common.js
-        drawAnimatedGradient(
-          p,
-          { x: x, y: y },
-          { x: x + cellWidth, y: y },
-          { x: x + cellWidth, y: y + cellHeight },
-          { x: x, y: y + cellHeight },
-          visual.colors || ['#000', '#fff'],
-          visual.offset || 0
-        );
-      }
-
-      if (visual.type === 'shape') {
-        const s = visual.shape || {};
-        // Dibujamos la forma conectada con common.js
-        p.push();
-        // Movemos el origen al tope-izquierda de la celda
-        p.translate(x, y);
-        drawShape(
-          p,
-          cellWidth,
-          cellHeight,
-          s.shapeType,   // 'circle' | 'square' | 'star' | 'organic'
-          s.fillColor,   // e.g. '#ff0000'
-          s.strokeColor, // e.g. '#000000'
-          s.size,        // 0–100
-          r,
-          c,
-          layer.visuals
-        );
-        p.pop();
-      }
-    }
-  }
-}
 
 // ========= Fetch data and render both canvases ========= //
 async function fetchAndRenderSeed(seedId) {
@@ -233,7 +277,7 @@ async function fetchAndRenderSeed(seedId) {
     window.gridConfig = data.gridConfig || { rows: 2, cols: 2, canvasWidth: 400, canvasHeight: 300 };
 
     if (!window.seedCtrl || !window.growingCtrl) {
-      if (!initializeCanvas()) throw new Error('Failed to initialize canvases');
+      if (!initializeCanvas(seedId)) throw new Error('Failed to initialize canvases');
     }
 
     window.originalLayers = data.originalLayers || [];
@@ -245,20 +289,21 @@ async function fetchAndRenderSeed(seedId) {
 
     // draw original
     window.layers = window.originalLayers;
-    if (window.seedCtrl) window.seedCtrl.redraw();
 
     // draw growth or placeholder
     if (hasGrown) {
+      window.hasGrown = true; // Esto activa el render del canvas de crecimiento
       window.layers = window.currentLayers;
-      if (window.growingCtrl) window.growingCtrl.redraw();
+
     } else {
+      window.hasGrown = false;
       if (window.growingCtrl) {
         window.growingCtrl.clear();
         window.growingCtrl.background(200);
         window.growingCtrl.textAlign(window.growingCtrl.CENTER, window.growingCtrl.CENTER);
         window.growingCtrl.text('No growth applied', window.growingCtrl.width/2, window.growingCtrl.height/2);
       }
-    }
+    }    
 
     const plantedAt = data.plantedAt?.toDate?.() || new Date();
     plantSummary.textContent = `Planted at: ${plantedAt.toLocaleString()}`;
@@ -302,7 +347,6 @@ async function fetchAndRenderSeed(seedId) {
 
     if (window.seedCtrl && window.originalLayers) {
       window.layers = window.originalLayers;
-      window.seedCtrl.redraw();
     }
   }
 
@@ -356,3 +400,128 @@ window.addEventListener('unload', () => {
   if (window.seedCtrl) window.seedCtrl.remove();
   if (window.growingCtrl) window.growingCtrl.remove();
 });
+
+
+//========= instances auf p5 =================
+
+//THIS is necesary because im working with p5 on the sketch, but since harvest has more than one canvas, 
+// its better to wark as instances, that means that i needed to create functions that work throughtout the instance
+//without touching the p5 functions that only work from sketch, ik there is an easier way but this is what
+//i did for it :)))
+
+// ================================================
+// harvest.js — Función instance‐safe drawSeed (r-c keys)
+// ================================================
+
+/**
+ * Dibuja gradientes y shapes según window.layers, en modo instancia p5.
+ * Las claves de celdas son "row-col" (r-c).
+ * @param {p5} p - Instancia de p5
+ * @param {boolean} isGrown - Si true, aplica bloom expansion
+ * @param {Array} layers - Array de layers; cada layer contiene `visuals` con keys "r-c"
+ */
+/** 
+ * Dibuja gradientes y shapes en modo instancia, usando window.gridConfig (sin p.width)
+ * Las claves de celdas son "row-col".
+ */
+function drawSeedInst(p, isGrown = false, layers = null) {
+  const {
+    rows,
+    cols,
+    canvasWidth,
+    canvasHeight
+  } = window.gridConfig;       // ≤—— aquí ya está normalizado
+  const cellW = canvasWidth / cols;
+  const cellH = canvasHeight / rows;
+
+  const target = layers || window.layers;
+  if (!Array.isArray(target) || target.length === 0) return;
+
+  const cache = p._gradientCache || (p._gradientCache = {});
+
+  for (const layer of target) {
+    //console.log("🧱 layer.visuals:", layer.visuals);
+    if (!layer.visuals) continue;
+    for (const [cellKey, visual] of Object.entries(layer.visuals)) {
+      const [r, c] = cellKey.split('-').map(Number);
+      if (!Number.isInteger(r) || !Number.isInteger(c)) continue;
+
+      p.push();
+      p.translate(c * cellW, r * cellH);
+
+      if (visual.type === 'gradient' && Array.isArray(visual.colors)) {
+        const key = `r${r}c${c}`;
+        let pg = cache[key];
+        if (!pg) pg = cache[key] = p.createGraphics(cellW, cellH);
+
+        updateGradientBufferInst(p, pg, visual.colors, visual.offset || 0, p.frameCount);
+        p.image(pg, 0, 0);
+
+        if (isGrown && visual.bloom) applyBloomExpansion(p, visual);
+
+      } else if (visual.type === 'shape' && visual.shape) {
+        const s = visual.shape;
+        // normaliza size (0–1 → 0–100)
+        let sizePct = s.size != null ? s.size : 1;
+        if (sizePct <= 1) sizePct *= 100;
+
+        drawShape(
+          p,
+          cellW, cellH,
+          s.shapeType   || 'circle',
+          s.fillColor   || '#ffffff',
+          s.strokeColor || '#000000',
+          sizePct,
+          r, c,
+          layer.visuals
+        );
+
+        if (isGrown && visual.bloom) applyBloomExpansion(p, visual);
+      }
+
+      p.pop();
+    }
+  }
+}
+
+
+function _getCellBuffer(p, cache, row, col, cellW, cellH) {
+  const key = `r${row}c${col}`;
+  if (!cache[key]) {
+    cache[key] = p.createGraphics(cellW, cellH);
+  }
+  return cache[key];
+}
+
+// 2) Dibuja el gradiente en un p5.Graphics usando SOLO métodos de `p`
+function updateGradientBufferInst(p, pg, colors, offset = 0, frameCountOverride) {
+  const steps = pg.height;
+  pg.noStroke();
+  pg.clear();
+
+  // Usa el frameCount de la instancia si no se pasa override
+  const fc = (frameCountOverride != null) ? frameCountOverride : p.frameCount;
+
+  for (let i = 0; i < steps; i++) {
+    const t  = i / steps;
+    const tt = (t + offset + fc * 0.01) % 1;
+
+    // Color base
+    const c0 = p.color(colors[0]);
+    let colr;
+    if (colors.length === 3) {
+      // De color0→color1 en la mitad baja, luego 1→2 en la mitad alta
+      if (tt < 0.5) {
+        colr = p.lerpColor(c0, p.color(colors[1]), tt * 2);
+      } else {
+        colr = p.lerpColor(p.color(colors[1]), p.color(colors[2]), (tt - 0.5) * 2);
+      }
+    } else {
+      // Sólo dos colores
+      colr = p.lerpColor(c0, p.color(colors[1] || "#000000"), tt);
+    }
+
+    pg.stroke(colr);
+    pg.line(0, i, pg.width, i);
+  }
+}

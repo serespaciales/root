@@ -32,12 +32,21 @@ function applySunBurnEffect(p, colors, intensity = 1) {
   }
   
   
-  // =====applyGlowEffect=====
-  // Simula glow (resplandor) aplicando un blur ligero sobre el gráfico del gradiente.
-  function applyGlowEffect(pg, intensity = 1) {
-    const blurAmount = Math.min(3, 2 * intensity); // Limite bajo
-    console.log(`💧 applyGlowEffect - blur amount: ${blurAmount}`);
-    pg.filter(pg.BLUR, blurAmount);
+  // =====applyWaterWobble=====
+  // Simula agua aplicando un blur ligero sobre el gráfico del gradiente.
+  function applyWaterWobble(pg, intensity = 1, frameCount = 0) {
+    const img = pg.get(); // Copia el buffer actual
+    const amplitude = 2 * intensity;    // Cuánta distorsión
+    const frequency = 0.1 * intensity;  // Frecuencia de la onda
+    const speed = 0.05;                 // Velocidad de animación
+  
+    pg.clear(); // Limpia el buffer
+  
+    for (let y = 0; y < img.height; y++) {
+      const offsetX = Math.sin(y * frequency + frameCount * speed) * amplitude;
+      // Dibuja una línea desplazada horizontalmente
+      pg.image(img, 0, y, img.width, 1, offsetX, y, img.width, 1);
+    }
   }
   
   

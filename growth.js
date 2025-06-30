@@ -1,3 +1,5 @@
+
+
 //=========GROWING FUNCTIONS !!!!! ===================
 
 //RETRIEVE DATA 
@@ -10,33 +12,100 @@
  * – Si ya existe el sketch de crecimiento (window.growthCtrl), fuerza un redraw()
  */
 async function fetchAndRenderGrowth(seedId) {
-  const db      = firebase.firestore();
-  const docRef  = db.collection('seeds').doc(seedId);
+  const db     = firebase.firestore();
+  const docRef = db.collection('seeds').doc(seedId);
   const docSnap = await docRef.get();
   if (!docSnap.exists) return;
-
   const data = docSnap.data();
 
-  // 1) Actualizar grid y layers
-  window.gridConfig     = data.gridConfig;
-  window.originalLayers = data.originalLayers || [];
-  window.currentLayers  = data.layers         || [];
+  // — Referencias DOM
+  const sunEl            = document.getElementById('sun-value');
+  const waterEl          = document.getElementById('water-value');
+  const vitEl            = document.getElementById('vitamins-value');
+  const daysEl           = document.getElementById('days-elapsed');
+  const totalEl          = document.getElementById('total-days');
+  const lastEl           = document.getElementById('growth-last-update');
+  const progressEl       = document.getElementById('growth-progress-text');
+  const growSummary      = document.getElementById('growing-summary');
+  const noGrowthMessage  = document.getElementById('no-growth-message');
+  const growingContainer = document.getElementById('growing-container');
 
-  // 2) Growth config: tocar defaults y convertir Timestamp → Date
-  const gc = data.growthConfig || {};
+  if (!sunEl || !waterEl || !vitEl || !daysEl || !totalEl
+      || !lastEl || !progressEl || !growSummary
+      || !noGrowthMessage || !growingContainer) {
+    console.error('Missing growth UI elements');
+    return;
+  }
+
+  // — Datos y capas
+  window.gridConfig    = data.gridConfig;
+  window.currentLayers = data.layers || [];
+  window.hasGrown      = true;
+
+  const gc        = data.growthConfig || {};
+  const plantedAt = data.plantedAt?.toDate?.() || new Date();
+  const startDate = gc.startDate?.toDate?.()   || plantedAt;
+  const totalDays = gc.days    || 21;
+  const prevDay   = gc.lastGrowthDay || 0;
+
   window.growthConfig = {
-    sun:       gc.sun       || 0,
-    water:     gc.water     || 0,
-    vitamins:  gc.vitamins  || 0,
-    days:      gc.days      || 21,
-    startDate: gc.startDate ? gc.startDate.toDate() : new Date()
+    sun:              gc.sun       || 0,
+    water:            gc.water     || 0,
+    vitamins:         gc.vitamins  || 0,
+    days:             totalDays,
+    startDate:        startDate,
+    lastGrowthDay:    prevDay,
+    hasFullyGrown:    gc.hasFullyGrown    || false,
+    growthFinishedAt: gc.growthFinishedAt?.toDate?.() || null
   };
 
-  // 3) Si el sketch ya está inicializado, forzar redraw()
-  if (window.growthCtrl && window.growthCtrl.redraw) {
-    window.growthCtrl.redraw();
+  // — Actualizar UI básica
+  sunEl.textContent   = String(gc.sun       || 0);
+  waterEl.textContent = String(gc.water     || 0);
+  vitEl.textContent   = String(gc.vitamins  || 0);
+
+  // — Cálculo de días y horas transcurridos
+  const now         = new Date();
+  const elapsedMs   = now.getTime() - startDate.getTime();
+  const elapsedDays = Math.floor(elapsedMs / (1000 * 60 * 60 * 24));
+  daysEl.textContent  = String(elapsedDays);
+  totalEl.textContent = String(totalDays);
+
+  // — Mostrar última actualización actual (antes de posible sobrescritura)
+  const updatedAtRaw = data.updatedAt?.toDate?.() || now;
+  lastEl.textContent = updatedAtRaw.toLocaleString();
+
+  // — Calcular progreso fino en horas
+  const elapsedHours = elapsedMs / (1000 * 60 * 60);
+  const totalHours   = totalDays * 24;
+  let progress       = (elapsedHours / totalHours) * 100;
+  if (progress > 100) progress = 100;
+  progressEl.textContent = `${progress.toFixed(1)}%`;
+
+  // — PASO 2: solo al cruzar un día completo, actualizar lastGrowthDay y updatedAt
+  if (elapsedDays > prevDay && elapsedDays <= totalDays) {
+    await docRef.update({
+      'growthConfig.lastGrowthDay': elapsedDays,
+      updatedAt: now
+    });
+    console.log(`✅ Cruzado nuevo día: ${elapsedDays}, updatedAt seteado a ${now.toLocaleString()}`);
+    // Reflejar en memoria y UI
+    window.growthConfig.lastGrowthDay = elapsedDays;
+    lastEl.textContent = now.toLocaleString();
+  }
+
+  // — Mostrar sección de crecimiento
+  growSummary.style.display       = 'block';
+  noGrowthMessage.style.display   = 'none';
+  growingContainer.classList.remove('no-growth');
+
+  // — Redibujar canvas derecho
+  if (window.growingCtrl && window.growingCtrl.redraw) {
+    window.growingCtrl.redraw();
   }
 }
+
+
 
 // Exportar para poder llamarla desde tu código principal:
 window.fetchAndRenderGrowth = fetchAndRenderGrowth;
@@ -194,7 +263,7 @@ function drawSeedGrowthInst(p, growthConfig = {}, layers = null) {
         p.image(pg, 0, 0);
 
         if (growthConfig.water) {
-          applyGlowEffect(p, growthConfig.water);
+          applyWaterWobble(pg, growthConfig.water, p.frameCount);
         }
 
         if (tmp.bloom) {

@@ -341,7 +341,7 @@ body.hide-ui .popup {
     border: none;
     border-top: 8px solid  rgba(49, 49, 49); /* Controla el espacio arriba y abajo */
     margin-top: 15px;
-    margin-bottom: 210px; 
+    margin-bottom: 160px; 
     max-width: 100%;
     height: 0;         /* Importante: ¡No agregues alto extra! */
   }

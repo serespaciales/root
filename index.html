@@ -178,122 +178,288 @@
     </script>
   
 
-  <!-- Info Popup -->
+    <!-- Info Popup -->
   <div id="info-popup" class="popup centered info-style">
     <div class="popup-header">
       <div class="header-left">
         <button class="popup-close">info×</button>
-        <button class="popup-shortcuts">shortcuts</button>
+        <button class="lang-btn" data-lang="shortcuts">shortcuts</button>
       </div>
       <div class="lang-switch">
         <button class="lang-btn" data-lang="es">español</button>
         <button class="lang-btn" data-lang="en">english</button>
         <button class="lang-btn" data-lang="de">deutsch</button>
       </div>
-    </div>    
+    </div>
     <div class="popup-content info-text">
-        <hr class="info-dividertop">
-        <h2 class="info-title">Root</h2>
-        <div class="info-subtitle">Under GNU GPL v2.0</div>
-        <hr class="info-dividerbottom">
+      <hr class="info-dividertop">
+      <h2 class="info-title">Root</h2>
+      <div class="info-subtitle">***BETA***</div>
+      <div class="info-subtitle">Under GNU GPL v2.0</div>
+      <hr class="info-dividerbottom">
+
+      <!-- ENGLISH VERSION -->
+      <div class="lang-content" data-lang="en">
+        <p class="info-body">
+          This is a modular graphics garden that grows on the internet. Draw on modules and watch your visuals change over time.
+          Each poster grows with the water, sun, and vitamins you give it. You can see and download both the original and the updated versions, based on a <em>_seed_</em> logic.
+        </p>
+
+        <p class="info-body">
+          root is free & open-source. Click <a href="https://github.com/anamariaa/modulariem" target="_blank">here</a> if you would like to contribute to the tool.
+        </p>
+
+        <h3 class="info-section-title">How to Start</h3>
+        <ul class="info-list">
+          <li>*Press H to enter the canvas, press H again to return here.</li>
+          <li>*Select a tool (pen, text, gradient, shape, texture, image).</li>
+          <li>*Draw or click on modules to add visuals.</li>
+          <li>*Use water, sun or vitamins to grow and transform your creation.</li>
+          <li>*Save, export or share any stage using your unique seed.</li>
+          <li>*No previous experience required. Just explore and experiment!</li>
+        </ul>
+
+        <h3 class="info-section-title">You can use Modulariem to:</h3>
+        <ul class="info-list">
+          <li>*Create and Share Visuals inspired by generative art and modular systems.</li>
+          <li>*Develop simple or complex visual compositions in a flexible, non-destructive environment.</li>
+          <li>*Model scenarios of visual evolution through algorithmic growth simulations.</li>
+          <li>*Explore new pipelines in design projects.</li>
+          <li>*Have fun :)</li>
+        </ul>
+
+        <h3 class="info-section-title">Shortcuts</h3>
+        <ul class="info-list">
+          <li><b>H</b> — Hide/show the tools palette</li>
+          <li><b>S</b> — Save your work</li>
+          <li><b>Z</b> — Undo last action</li>
+          <li><b>Shift + Z</b> — Redo previous action</li>
+          <li><b>P</b> — Pen/Draw tool</li>
+          <li><b>T</b> — Text tool</li>
+          <li><b>G</b> — Gradient tool</li>
+          <li><b>I</b> — Image tool</li>
+          <li><b>V</b> — Select/Move elements</li>
+          <li><b>Esc</b> — Deselect or close any popup window</li>
+        </ul>
+
+        <h3 class="info-section-title">FAQ</h3>
+        <ul class="info-list">
+          <li><b>*What is root?</b><br>
+            A modular visual design tool where your compositions grow and evolve online.</li>
+          <li><b>*Do I need to know design or programming?</b><br>
+            No. Root is made for everyone—just pick a tool and start creating.</li>
+          <li><b>*How does growth work?</b><br>
+            Each visual grows and transforms based on your actions and settings (water, sun, vitamins), thanks to algorithmic simulations that let you see every stage.</li>
+          <li><b>*Can I download or share my creations?</b><br>
+            Yes, you can save and download any version. Share your unique seed so others can remix your work.</li>
+          <li><b>*What can I create in root?</b><br>
+            From generative art and branding to layouts, growth simulations, and more.</li>
+          <li><b>*Is root free?</b><br>
+            Yes, root is free for all users.</li>
+          <li><b>*How are visuals saved?</b><br>
+            Each creation starts from a unique seed, which allows you to revisit or share your work anytime.</li>
+          <li><b>*Is collaboration possible?</b><br>
+            You can share your seed so others can collaborate. Real-time collaboration is coming soon.</li>
+        </ul>
+
+        <h3 class="info-section-title">Credits</h3>
+        <ul class="info-list">
+          <li><b>root</b> is a project by Ana María, inspired by platforms like <a href="https://hydra.ojack.xyz/" target="_blank">Hydra</a> and <a href="https://hy5.live/" target="_blank">hy5live</a>.</li>
+          <li>Thanks to the creative coding community and all who support open-source culture.</li>
+          <li>root - Modular Poster Garden<br>
+          Copyright (C) 2025 Ana María Peña Cardona<br>
+          This program is free software under the GNU General Public License. See https://www.gnu.org/licenses/<br>
+          Contact: hello@seresworldwide.com</li>
+        </ul>
+      </div>
+
+      <!-- SPANISH VERSION: mantén tu contenido actual aquí -->
+      <div class="lang-content" data-lang="es" style="display:none">
+          <p class="info-body">
+            Este es un jardín gráfico modular que crece en internet. Dibuja en los módulos y observa cómo tus visuales cambian con el tiempo.
+            Cada póster crece con el agua, el sol y las vitaminas que le das. Puedes ver y descargar tanto la versión original como la actualizada, basado en una lógica de <em>_seed_</em>.
+          </p>
         
-      <p class="info-body">
-        This is a modular graphics garden that grows on the internet. Draw on modules and watch your visuals change over time.
-        Each poster grows with the water, sun, and vitamins you give it. You can see and download both the original and the updated versions, based on a <em>_seed_</em> logic.
-      </p>
+          <p class="info-body">
+            root es libre y de código abierto. Haz clic <a href="https://github.com/anamariaa/modulariem" target="_blank">aquí</a> si deseas contribuir a la herramienta.
+          </p>
+        
+          <h3 class="info-section-title">Cómo empezar</h3>
+          <ul class="info-list">
+            <li>*Accede al canvas presionando H, y vuelve a esta página presionando H de nuevo.</li>
+            <li>*Selecciona una herramienta (lápiz, texto, gradiente, forma, textura, imagen).</li>
+            <li>*Dibuja o haz clic sobre los módulos para agregar visuales.</li>
+            <li>*Usa agua, sol o vitaminas para hacer crecer y transformar tu creación.</li>
+            <li>*Guarda, exporta o comparte cualquier etapa usando tu seed único.</li>
+            <li>*No se requiere experiencia previa. ¡Solo explora y experimenta!</li>
+          </ul>
+        
+          <h3 class="info-section-title">Puedes usar Modulariem para:</h3>
+          <ul class="info-list">
+            <li>*Crear y compartir visuales inspirados en arte generativo y sistemas modulares.</li>
+            <li>*Desarrollar composiciones visuales simples o complejas en un entorno flexible y no destructivo.</li>
+            <li>*Modelar escenarios de evolución visual a través de simulaciones de crecimiento algorítmico.</li>
+            <li>*Explorar nuevos pipelines en proyectos de diseño.</li>
+            <li>*Divertirte :)</li>
+          </ul>
+        
+          <h3 class="info-section-title">Atajos de teclado</h3>
+          <ul class="info-list">
+            <li><b>H</b> — Ocultar/mostrar la paleta de herramientas</li>
+            <li><b>S</b> — Guardar tu trabajo</li>
+            <li><b>Z</b> — Deshacer la última acción</li>
+            <li><b>Shift + Z</b> — Rehacer la acción anterior</li>
+            <li><b>P</b> — Herramienta Lápiz/Dibujo</li>
+            <li><b>T</b> — Herramienta Texto</li>
+            <li><b>G</b> — Herramienta Gradiente</li>
+            <li><b>I</b> — Herramienta Imagen</li>
+            <li><b>V</b> — Seleccionar/Mover elementos</li>
+            <li><b>Esc</b> — Deseleccionar o cerrar cualquier ventana emergente</li>
+          </ul>
+        
+          <h3 class="info-section-title">Preguntas Frecuentes (FAQ)</h3>
+          <ul class="info-list">
+            <li><b>*¿Qué es root?</b><br>
+              Es una herramienta modular de diseño visual donde tus composiciones crecen y evolucionan en línea.</li>
+            <li><b>*¿Necesito saber diseño o programación?</b><br>
+              No. root está pensado para todos — solo elige una herramienta y comienza a crear.</li>
+            <li><b>*¿Cómo funciona el crecimiento?</b><br>
+              Cada visual crece y se transforma según las acciones y ajustes que realices (agua, sol, vitaminas, etc.), gracias a algoritmos y funciones de código que te permiten ver cada etapa del proceso.</li>
+            <li><b>*¿Puedo descargar o compartir mis creaciones?</b><br>
+              Sí, puedes guardar y descargar cualquier versión. También puedes compartir tu seed único para que otros vean o remixen tu trabajo.</li>
+            <li><b>*¿Qué puedo crear en root?</b><br>
+              Desde identidades visuales y arte generativo hasta layouts experimentales, simulaciones de crecimiento y mucho más.</li>
+            <li><b>*¿Es root gratuito?</b><br>
+              Sí, root es gratis para todos los usuarios.</li>
+            <li><b>*¿Cómo se guardan mis visuales?</b><br>
+              Cada creación parte de un seed único, que te permite revisitar o compartir tu trabajo cuando quieras.</li>
+            <li><b>*¿Es posible la colaboración?</b><br>
+              Puedes compartir tu seed para que otros colaboren y hagan crecer tus visuales. La colaboración en tiempo real estará disponible próximamente.</li>
+          </ul>
+        
+          <h3 class="info-section-title">Créditos</h3>
+          <ul class="info-list">
+            <li><b>root</b> es un proyecto creado por Ana María, inspirado por plataformas como <a href="https://hydra.ojack.xyz/" target="_blank">Hydra</a> y <a href="https://hy5.live/" target="_blank">hy5live</a>.</li>
+            <li>Agradecimientos a la comunidad de creative coding y a quienes contribuyen a la cultura open-source.</li>
+            <li>root - Modular Poster Garden<br><br>
+              Copyright (C) 2025 Ana María Peña Cardona<br><br>
+              Este programa es software libre; puedes redistribuirlo y/o modificarlo bajo los términos de la Licencia Pública General GNU publicada por la Free Software Foundation; ya sea la versión 2 de la Licencia, o (cuando así lo decidas) cualquier versión posterior.<br><br>
+              Este programa se distribuye con la esperanza de que sea útil, pero SIN NINGUNA GARANTÍA; sin incluso la garantía implícita de COMERCIALIZACIÓN o IDONEIDAD PARA UN PROPÓSITO PARTICULAR. Véase la Licencia Pública General GNU para más detalles.<br><br>
+              Deberías haber recibido una copia de la Licencia Pública General GNU junto con este programa; si no, consulta <a href="https://www.gnu.org/licenses/" target="_blank">https://www.gnu.org/licenses/</a><br><br>
+              Contacto: hello@seresworldwide.com
+            </li>
+          </ul>
+        </div>
+        
+      <!-- GERMAN VERSION: puedes activarla luego -->
+      <div class="lang-content" data-lang="de" style="display:none">
+          <p class="info-body">
+            Dies ist ein modularer Grafikgarten, der im Internet wächst. Zeichne auf den Modulen und beobachte, wie sich deine Visuals im Laufe der Zeit verändern.  
+            Jedes Poster wächst mit dem Wasser, der Sonne und den Vitaminen, die du ihm gibst. Du kannst sowohl die ursprüngliche als auch die aktualisierte Version sehen und herunterladen, basierend auf einer <em>_Seed_</em>-Logik.
+          </p>
+        
+          <p class="info-body">
+            root ist kostenlos und Open Source. Klicke <a href="https://github.com/anamariaa/modulariem" target="_blank">hier</a>, wenn du zur Weiterentwicklung beitragen möchtest.
+          </p>
+        
+          <h3 class="info-section-title">Wie du anfängst</h3>
+          <ul class="info-list">
+            <li>*Drücke H, um das Haupt-Canvas zu betreten. Drücke H erneut, um zu diesem Fenster zurückzukehren.</li>
+            <li>*Wähle ein Tool aus (Stift, Text, Verlauf, Form, Textur, Bild).</li>
+            <li>*Zeichne oder klicke auf ein Modul, um ein Visual hinzuzufügen.</li>
+            <li>*Verwende Wasser, Sonne oder Vitamine, um dein Werk wachsen und sich verändern zu lassen.</li>
+            <li>*Speichere, exportiere oder teile jede Phase mit deinem einzigartigen Seed.</li>
+            <li>*Keine Vorkenntnisse erforderlich. Einfach ausprobieren!</li>
+          </ul>
+        
+          <h3 class="info-section-title">Du kannst Modulariem verwenden, um:</h3>
+          <ul class="info-list">
+            <li>*Visuals zu erstellen und zu teilen, inspiriert von generativer Kunst und modularen Systemen.</li>
+            <li>*Einfache oder komplexe Kompositionen in einer flexiblen, nicht-destruktiven Umgebung zu gestalten.</li>
+            <li>*Visuelle Wachstumsprozesse mithilfe algorithmischer Simulationen zu modellieren.</li>
+            <li>*Neue Designpipelines zu erforschen.</li>
+            <li>*Spaß zu haben :)</li>
+          </ul>
+        
+          <h3 class="info-section-title">Tastenkombinationen</h3>
+          <ul class="info-list">
+            <li><b>H</b> — Werkzeug-Palette anzeigen/verbergen</li>
+            <li><b>S</b> — Deine Arbeit speichern</li>
+            <li><b>Z</b> — Letzte Aktion rückgängig machen</li>
+            <li><b>Shift + Z</b> — Letzte Aktion wiederholen</li>
+            <li><b>P</b> — Stift-/Zeichentool</li>
+            <li><b>T</b> — Texttool</li>
+            <li><b>G</b> — Verlaufstool</li>
+            <li><b>I</b> — Bildtool</li>
+            <li><b>V</b> — Auswahl-/Bewegungstool</li>
+            <li><b>Esc</b> — Auswahl aufheben oder Pop-up schließen</li>
+          </ul>
+        
+          <h3 class="info-section-title">Häufige Fragen (FAQ)</h3>
+          <ul class="info-list">
+            <li><b>*Was ist root?</b><br>
+              Eine modulare Designplattform, auf der deine visuellen Kompositionen online wachsen und sich entwickeln.</li>
+            <li><b>*Brauche ich Design- oder Programmierkenntnisse?</b><br>
+              Nein. root ist für alle gedacht – wähle einfach ein Tool und fang an.</li>
+            <li><b>*Wie funktioniert das Wachstum?</b><br>
+              Jedes Visual entwickelt sich je nach deinen Aktionen (Wasser, Sonne, Vitamine usw.). Durch Algorithmen und Codefunktionen kannst du jede Wachstumsstufe sehen.</li>
+            <li><b>*Kann ich meine Arbeiten speichern oder teilen?</b><br>
+              Ja, du kannst jede Version speichern und herunterladen. Du kannst auch deinen einzigartigen Seed teilen, damit andere deine Arbeit sehen oder weiterentwickeln können.</li>
+            <li><b>*Was kann ich mit root machen?</b><br>
+              Von visuellen Identitäten und generativer Kunst bis zu experimentellen Layouts und Wachstumssimulationen.</li>
+            <li><b>*Ist root kostenlos?</b><br>
+              Ja, root ist für alle kostenlos.</li>
+            <li><b>*Wie werden meine Visuals gespeichert?</b><br>
+              Jede Kreation basiert auf einem einzigartigen Seed, der es dir ermöglicht, sie jederzeit wiederzufinden oder zu teilen.</li>
+            <li><b>*Ist Zusammenarbeit möglich?</b><br>
+              Du kannst deinen Seed teilen, damit andere mitmachen und dein Visual weiterentwickeln. Echtzeit-Zusammenarbeit kommt bald.</li>
+          </ul>
+        
+          <h3 class="info-section-title">Credits</h3>
+          <ul class="info-list">
+            <li><b>root</b> ist ein Projekt von Ana María, inspiriert von Plattformen wie <a href="https://hydra.ojack.xyz/" target="_blank">Hydra</a> und <a href="https://hy5.live/" target="_blank">hy5live</a>.</li>
+            <li>Danke an die Creative Coding Community und alle, die zur Open-Source-Kultur beitragen.</li>
+            <li>root – Modular Poster Garden<br><br>
+              Copyright (C) 2025 Ana María Peña Cardona<br><br>
+              Dieses Programm ist freie Software; du kannst es unter den Bedingungen der GNU General Public License veröffentlichen und/oder modifizieren, wie sie von der Free Software Foundation veröffentlicht wurde; entweder Version 2 oder (nach deiner Wahl) jede spätere Version.<br><br>
+              Dieses Programm wird in der Hoffnung verbreitet, dass es nützlich ist, aber OHNE JEGLICHE GARANTIE; sogar ohne die implizierte Garantie der MARKTFÄHIGKEIT oder TAUGLICHKEIT FÜR EINEN BESTIMMTEN ZWECK. Siehe die GNU General Public License für weitere Details.<br><br>
+              Du solltest eine Kopie der GNU General Public License zusammen mit diesem Programm erhalten haben; falls nicht, siehe <a href="https://www.gnu.org/licenses/" target="_blank">https://www.gnu.org/licenses/</a><br><br>
+              Kontakt: hello@seresworldwide.com
+            </li>
+          </ul>
+        </div>
+        <div class="lang-content" data-lang="shortcuts" style="display: none;">
+          <h3 class="info-section-title">Shortcuts / Atajos / Tastenkürzel</h3>
+          <ul class="info-list">
+            <li><b>H</b> — Hide/show tools palette / Ocultar/mostrar paleta / Werkzeuge ein-/ausblenden</li>
+            <li><b>S</b> — Save your work / Guardar tu trabajo / Speichern</li>
+            <li><b>Z</b> — Undo last action / Deshacer / Rückgängig</li>
+            <li><b>Shift + Z</b> — Redo / Rehacer / Wiederholen</li>
+            <li><b>P</b> — Pen tool / Lápiz / Stift</li>
+            <li><b>T</b> — Text tool / Texto / Text</li>
+            <li><b>G</b> — Gradient tool / Gradiente / Verlauf</li>
+            <li><b>I</b> — Image tool / Imagen / Bild</li>
+            <li><b>V</b> — Select/Move / Seleccionar / Bewegen</li>
+            <li><b>Esc</b> — Deselect/Close / Cerrar / Schließen</li>
+          </ul>
+        </div>
+        
+    </div>
+  </div>
+
+  <script>
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const lang = btn.dataset.lang;
+        document.querySelectorAll('.lang-content').forEach(div => {
+          div.style.display = div.dataset.lang === lang ? 'block' : 'none';
+        });
+      });
+    });
+  </script>
   
-      <p class="info-body">
-        Modulariem is free & open-source. Click <a href="https://github.com/anamariaa/modulariem" target="_blank">here</a> if you would like to contribute to the tool.
-      </p>
-      <h3 class="info-section-title">How to Start</h3>
-
-      <ul class="info-list">
-        <li>*Accede al canvas presionando h, accede a esta página de nuevo volviendo a preseionar h.</li>
-        <li>*Selecciona una herramienta (lápiz, texto, gradiente, shape, textura, imagen).</li>
-        <li>*Dibuja o haz clic sobre los módulos para agregar visuales.</li>
-        <li>*Usa agua, sol o vitaminas para hacer crecer y transformar tu creación.</li>
-        <li>*Guarda, exporta o comparte cualquier etapa usando tu seed único.</li>
-        <li>*No se requiere experiencia previa. ¡Solo explora y experimenta!</li>
-      </ul>
-    
-      <h3 class="info-section-title">You can use Modulariem to:</h3>
-      <ul class="info-list">
-        <li>*Crear y Compartir Visuales inspirados en arte generativo y sistemas modulares.</li>
-        <li>*Desarrollar composiciones visuales simples o complejas en un entorno flexible y no destructivo.</li>
-        <li>*Modelar escenarios de evolución visual a través de simulaciones de crecimiento algorítimicos</li>
-        <li>*Explorar nuevos pipelines en proyectos de diseño</li>
-        <li>*Divertirte :)</li>
-      </ul>
   
-      <h3 class="info-section-title">Shortcuts</h3>
-      <ul class="info-list">
-        <li><b>H</b> — Ocultar/mostrar la paleta de herramientas</li>
-        <li><b>S</b> — Guardar tu trabajo</li>
-        <li><b>Z</b> — Deshacer la última acción</li>
-        <li><b>Shift + Z</b> — Rehacer la acción anterior</li>
-        <li><b>P</b> — Herramienta Lápiz/Dibujo</li>
-        <li><b>T</b> — Herramienta Texto</li>
-        <li><b>G</b> — Herramienta Gradiente</li>
-        <li><b>I</b> — Herramienta Imagen</li>
-        <li><b>V</b> — Seleccionar/Mover elementos</li>
-        <li><b>Esc</b> — Deseleccionar o cerrar cualquier ventana emergente</li>
-      </ul>
-      
-      <h3 class="info-section-title">FAQ</h3>
-      <ul class="info-list">
-        <li><b>*¿Qué es Modulariem?</b><br>
-          Es una herramienta modular de diseño visual donde tus composiciones crecen y evolucionan en línea.</li>
-        <li><b>*¿Necesito saber diseño o programación?</b><br>
-          No. Modulariem está pensado para todos—solo elige una herramienta y comienza a crear.</li>
-        <li><b>*¿Cómo funciona el crecimiento?</b><br>
-          Cada visual crece y se transforma según las acciones y ajustes que realices (agua, sol, vitaminas, etc.), permitiéndote ver cada etapa del proceso.</li>
-        <li><b>*¿Puedo descargar o compartir mis creaciones?</b><br>
-          Sí, puedes guardar y descargar cualquier versión. También puedes compartir tu seed único para que otros vean o remixen tu trabajo.</li>
-        <li><b>*¿Qué puedo crear en Modulariem?</b><br>
-          Desde identidades visuales y arte generativo hasta layouts experimentales, simulaciones de crecimiento y mucho más.</li>
-        <li><b>*¿Es Modulariem gratuito?</b><br>
-          Sí, Modulariem es gratis para todos los usuarios.</li>
-        <li><b>*¿Cómo se guardan mis visuales?</b><br>
-          Cada creación parte de un seed único, que te permite revisitar o compartir tu trabajo cuando quieras.</li>
-        <li><b>*¿Es posible la colaboración?</b><br>
-          Puedes compartir tu seed para que otros colaboren y hagan crecer tus visuales. Colaboración en tiempo real estará disponible próximamente.</li>
-      </ul>
-      
-      <h3 class="info-section-title">How to Start</h3>
-      <ul class="info-list">
-        <li>*Abre Modulariem y accede al canvas principal.</li>
-        <li>*Selecciona una herramienta (lápiz, texto, gradiente, shape, textura, imagen).</li>
-        <li>*Dibuja o haz clic sobre los módulos para agregar visuales.</li>
-        <li>*Usa agua, sol o vitaminas para hacer crecer y transformar tu creación.</li>
-        <li>*Guarda, exporta o comparte cualquier etapa usando tu seed único.</li>
-        <li>*No se requiere experiencia previa. ¡Solo explora y experimenta!</li>
-      </ul>
-      
-      <h3 class="info-section-title">Credits</h3>
-      <ul class="info-list">
-        <li><b>Modulariem</b> es un proyecto creado por Ana María, inspirado por plataformas como <a href="https://hydra.ojack.xyz/" target="_blank">Hydra</a> y <a href="https://hy5.live/" target="_blank">hy5live</a>.</li>
-        <li>Agradecimientos a la comunidad de creative coding y a quienes contribuyen a la cultura open-source.</li>
-                
-        <li>Brick - Modular Poster Garden 
-        
-          Copyright (C) 2025 Ana María Peña Cardona
 
-        Este programa es software libre; puedes redistribuirlo y/o modificarlo
-        bajo los términos de la Licencia Pública General GNU publicada por
-        la Free Software Foundation; ya sea la versión 2 de la Licencia, o
-        (cuando así lo decidas) cualquier versión posterior.
-
-        Este programa se distribuye con la esperanza de que sea útil,
-        pero SIN NINGUNA GARANTÍA; sin incluso la garantía implícita de
-        COMERCIALIZACIÓN o IDONEIDAD PARA UN PROPÓSITO PARTICULAR.
-        Véase la Licencia Pública General GNU para más detalles.
-
-        Deberías haber recibido una copia de la Licencia Pública General GNU
-        junto con este programa; si no, consulta https://www.gnu.org/licenses/
-        
-        Contacto: hola@seresworldwide.com</li>
-      </ul>
-      
   
   <input type="file" id="image-loader" accept="image/*" style="display:none" />
 <script src="utils.js"></script>

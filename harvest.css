@@ -33,11 +33,9 @@ body {
 
 #main-content {
   display: flex;
-  flex-direction: row; /* Side-by-side containers */
-  flex: 1 1 auto; /* Take remaining height */
-  width: 100%;
-  gap: 20px; /* Space between containers */
-  align-items: center; /* Ensure containers stretch vertically */
+  gap: 20px;
+  align-items: stretch;   /* mismo alto para ambas columnas */
+  flex: 1;                /* ocupa todo el alto sobrante */
 }
 
 #seed-finder {
@@ -49,18 +47,19 @@ body {
   margin-right: 20px; /* 20px margin from the right edge */
 }
 
-#seed-container, #growing-container {
-  width: 50%; /* Each takes 50% of the page */
-  height: 100%; /* Use full available height */
-  max-width: 500px; /* Limit width for smaller appearance */
-  margin: 20px;
-  box-sizing: border-box;
+/* coincide con tu HTML */
+#original-container,
+#growing-container {
+  flex: 1;                  /* que cada sección crezca igual */
   display: flex;
   flex-direction: column;
-  align-items: left; /* Center contents horizontally */
+  align-items: flex-start;
+  justify-content: flex-start;
+  margin: 20px;
+  box-sizing: border-box;
 }
 
-#seed-container {
+#original-container {
   margin-right: 20px; /* Small margin between sections */
 }
 
@@ -176,8 +175,11 @@ h2 {
 
 
 
-
-#canvas-wrapper, #growing-wrapper {
-  display: block;
-  margin: 0 auto;
+/* Center the canvases inside their wrappers */
+#canvas-wrapper,
+#growing-wrapper {
+  display: flex;
+  justify-content: center;  /* centra horizontalmente */
+  align-items: flex-start;  /* pega el canvas al TOP */
+  /* elimina flex:1 para que no llene todo el espacio sobrante */
 }

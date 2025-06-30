@@ -671,3 +671,10 @@ function disableEditingControls() {
   }
 }
 
+
+//DISABLE UI AFTER GROWTH 
+
+
+//=========================COLOR HELPERS================================
+
+

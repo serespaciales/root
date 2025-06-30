@@ -172,23 +172,33 @@ async function saveToFirestore() {
       updatedAt: now,
       lastUpdate: now,
       growthProgress: alreadyExists ? doc.data().growthProgress || 0 : 0,
+      //30 JUN. reescritura de growthconfig con nuevos valores, si no funciona, volver a ver 0.7
       growthConfig: alreadyExists
-        ? doc.data().growthConfig || {
-            sun: 0,
-            water: 0,
-            vitamins: 0,
-            days: 21,
-            startDate: now
-          }
-        : {
-            sun: 0,
-            water: 0,
-            vitamins: 0,
-            days: 21,
-            startDate: now
-          },
+    ? {
+        ...(doc.data().growthConfig || {
+          sun: 0,
+          water: 0,
+          vitamins: 0,
+          days: 21,
+          startDate: now
+        }),
+        lastGrowthDay:    doc.data().growthConfig?.lastGrowthDay    ?? 0,
+        hasFullyGrown: false,
+        growthFinishedAt: null
+      }
+    : {
+        sun: 0,
+        water: 0,
+        vitamins: 0,
+        days: 21,
+        startDate: now,
+        lastGrowthDay:    0,
+        hasFullyGrown: false,
+        growthFinishedAt: null
+      },
       locked: alreadyExists ? doc.data().locked ?? false : false
-    };
+       };
+    
 
     console.log('Saving data to Firestore:', JSON.stringify(data, null, 2));
     await docRef.set(data, { merge: true });
@@ -283,6 +293,7 @@ function randomColorFromNeonPalette() {
 }
 
 function setup() {
+  // 1. Setup del canvas
   if (MODE === 'edit') {
     let container = select('#canvas-wrapper')?.elt;
     if (!container) {
@@ -301,86 +312,7 @@ function setup() {
 
   gradientBuffer = createGraphics(width, height);
 
-  const initializeDefaultLayer = (rows = 2, cols = 2) => {
-    const defaultLayer = {
-      id: generateLayerID(),
-      name: "gradient 1",
-      type: "gradient",
-      color: randomColorFromNeonPalette(),
-      visible: true,
-      visuals: {}
-    };
-    for (let i = 0; i < rows; i++) {
-      for (let j = 0; j < cols; j++) {
-        defaultLayer.visuals[`${i}-${j}`] = {
-          type: "gradient",
-          colors: [
-            randomColorFromNeonPalette(),
-            randomColorFromNeonPalette(),
-            randomColorFromNeonPalette()
-          ],
-          offset: random(0, 1)
-        };
-      }
-    }
-    return defaultLayer;
-  };
-
-  updateGridPositions();
-
-  // Fetch seed data using Promise
-  seedsCol.doc(seed).get().then(doc => {
-    let rows = 2, cols = 2;
-    if (doc.exists) {
-      const data = doc.data();
-      if (data.layers && Array.isArray(data.layers)) {
-        window.layers = data.layers;
-        rows = data.gridConfig?.rows || 2;
-        cols = data.gridConfig?.cols || 2;
-      } else {
-        window.layers = [initializeDefaultLayer(rows, cols)];
-        seedsCol.doc(seed).set({
-          seedCode: seed,
-          layers: window.layers,
-          gridConfig: { rows, cols, canvasWidth: width || 800, canvasHeight: height || 600 },
-          plantedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true }).catch(err => console.error('Error saving default seed:', err));
-      }
-      if (data.gridConfig) {
-        rows = data.gridConfig.rows || rows;
-        cols = data.gridConfig.cols || cols;
-      }
-      // Check locked state and disable editing
-      if (data.locked) {
-        disableEditingControls();
-        if (window.growthManager) {
-          window.growthManager.init(seed);
-          window.growthManager.lockSeed();
-        }
-      }
-    } else {
-      window.layers = [initializeDefaultLayer(rows, cols)];
-      seedsCol.doc(seed).set({
-        seedCode: seed,
-        layers: window.layers,
-        gridConfig: { rows, cols, canvasWidth: width || 800, canvasHeight: height || 600 },
-        plantedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true }).catch(err => console.error('Error creating new seed:', err));
-    }
-    window.activeLayer = window.layers[0] || null;
-    updateGridPositions();
-    if (MODE === 'edit') renderLayersUI();
-    redraw();
-    console.log('Layers loaded on setup:', window.layers.map(l => l.name));
-  }).catch(err => {
-    console.error('Error loading from Firestore:', err);
-    window.layers = [initializeDefaultLayer()];
-    window.activeLayer = window.layers[0];
-    updateGridPositions();
-    if (MODE === 'edit') renderLayersUI();
-    redraw();
-  });
-
+  // 2. Inicialización de sliders → esto debe ir ANTES del fetch
   if (MODE === 'edit') {
     const seedInput = select('input[name="seed"]');
     if (seedInput) seedInput.value(seed);
@@ -392,29 +324,138 @@ function setup() {
       });
     }
 
-    // Initialize sliders
-    sliders.rows = select('input[name="rows"]') || { value: () => 2 };
-    sliders.columns = select('input[name="columns"]') || { value: () => 2 };
+    sliders.rows = select('input[name="rows"]') || { value: () => 6 };
+    sliders.columns = select('input[name="columns"]') || { value: () => 6 };
     sliders.sun = select('input[name="sun"]') || { value: () => 0 };
     sliders.water = select('input[name="water"]') || { value: () => 0 };
     sliders.vitamins = select('input[name="vitamins"]') || { value: () => 0 };
     sliders.days = select('input[name="days"]') || { value: () => 1 };
 
-    if (typeof sliders.rows.value !== 'function') sliders.rows.value = () => 2;
-    if (typeof sliders.columns.value !== 'function') sliders.columns.value = () => 2;
+    if (typeof sliders.rows.value !== 'function') sliders.rows.value = () => 6;
+    if (typeof sliders.columns.value !== 'function') sliders.columns.value = () => 6;
     if (typeof sliders.sun.value !== 'function') sliders.sun.value = () => 0;
     if (typeof sliders.water.value !== 'function') sliders.water.value = () => 0;
     if (typeof sliders.vitamins.value !== 'function') sliders.vitamins.value = () => 0;
     if (typeof sliders.days.value !== 'function') sliders.days.value = () => 1;
   } else {
-    sliders.rows = { value: () => 2 };
-    sliders.columns = { value: () => 2 };
+    sliders.rows = { value: () => 6 };
+    sliders.columns = { value: () => 6 };
     sliders.sun = { value: () => 0 };
     sliders.water = { value: () => 0 };
     sliders.vitamins = { value: () => 0 };
     sliders.days = { value: () => 1 };
   }
+// 3. Función de capa por defecto
+const initializeDefaultLayer = (rows = 2, cols = 2) => {
+  const defaultLayer = {
+    id: generateLayerID(),
+    name: "gradient 1",
+    type: "gradient",
+    color: randomColorFromNeonPalette(),
+    visible: true,
+    visuals: {}
+  };
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      defaultLayer.visuals[`${i}-${j}`] = {
+        type: "gradient",
+        colors: [
+          randomColorFromNeonPalette(),
+          randomColorFromNeonPalette(),
+          randomColorFromNeonPalette()
+        ],
+        offset: random(0, 1)
+      };
+    }
+  }
+  return defaultLayer;
+};
 
+// 4. Fetch de Firestore
+seedsCol.doc(seed).get().then(doc => {
+  let rows = parseInt(sliders.rows?.value() || 6);
+  let cols = parseInt(sliders.columns?.value() || 6);
+
+  if (doc.exists) {
+    const data = doc.data();
+
+    if (data.gridConfig) {
+      rows = data.gridConfig.rows || rows;
+      cols = data.gridConfig.cols || cols;
+    }
+
+    // 🔥 Aquí actualizamos los sliders
+    if (sliders.rows?.value && sliders.columns?.value) {
+      sliders.rows.value(rows);
+      sliders.columns.value(cols);
+    }
+
+    if (data.layers && Array.isArray(data.layers)) {
+      window.layers = data.layers;
+    } else {
+      window.layers = [initializeDefaultLayer(rows, cols)];
+      seedsCol.doc(seed).set({
+        seedCode: seed,
+        layers: window.layers,
+        gridConfig: {
+          rows,
+          cols,
+          canvasWidth: width || 800,
+          canvasHeight: height || 600
+        },
+        plantedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true }).catch(err => console.error('Error saving default seed:', err));
+    }
+
+    if (data.locked) {
+      disableEditingControls();
+      if (window.growthManager) {
+        window.growthManager.init(seed);
+        window.growthManager.lockSeed();
+      }
+    }
+
+  } else {
+    // 🌱 NUEVA SEMILLA → valores aleatorios de 2 a 8
+    rows = Math.floor(random(2, 9));
+    cols = Math.floor(random(2, 9));
+
+    // 🔥 Actualizamos sliders también
+    if (sliders.rows?.value && sliders.columns?.value) {
+      sliders.rows.value(rows);
+      sliders.columns.value(cols);
+    }
+
+    window.layers = [initializeDefaultLayer(rows, cols)];
+    seedsCol.doc(seed).set({
+      seedCode: seed,
+      layers: window.layers,
+      gridConfig: {
+        rows,
+        cols,
+        canvasWidth: width || 800,
+        canvasHeight: height || 600
+      },
+      plantedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true }).catch(err => console.error('Error creating new seed:', err));
+  }
+
+  window.activeLayer = window.layers[0] || null;
+  updateGridPositions();
+  if (MODE === 'edit') renderLayersUI();
+  redraw();
+  console.log('Layers loaded on setup:', window.layers.map(l => l.name));
+}).catch(err => {
+  console.error('Error loading from Firestore:', err);
+  window.layers = [initializeDefaultLayer()];
+  window.activeLayer = window.layers[0];
+  updateGridPositions();
+  if (MODE === 'edit') renderLayersUI();
+  redraw();
+});
+
+
+  // 5. Inicializaciones restantes
   updateGridPositions();
 
   const gradientColor1 = document.getElementById("gradient-color-1");
@@ -439,13 +480,11 @@ function setup() {
   setupUnifyButton();
   setupGridEditingLogic();
   setupResizerHandle();
-
-  // Move growth integration to a separate function
   setupGrowthIntegration();
 
   activeBorderColor = color(0, 255, 0);
-
 }
+
 
 
 function setupResizerHandle() {
@@ -1623,8 +1662,19 @@ function getGridMetrics() {
 }
 // 2) Recalcula columnPositions / rowPositions  
 function updateGridPositions() {
-  const rows = parseInt(sliders.rows?.value() || 2, 10);
-  const cols = parseInt(sliders.columns?.value() || 2, 10);
+  let rows = 2, cols = 2;
+
+  // 1. Prioridad a gridConfig guardado en Firestore
+  if (window.activeLayer?.gridConfig) {
+    rows = window.activeLayer.gridConfig.rows || 2;
+    cols = window.activeLayer.gridConfig.cols || 2;
+
+  // 2. Si estamos en modo edit, usamos sliders si no hay gridConfig
+  } else if (MODE === 'edit' && sliders.rows && sliders.columns) {
+    rows = parseInt(sliders.rows?.value() || 2, 10);
+    cols = parseInt(sliders.columns?.value() || 2, 10);
+  }
+
   const w = width;
   const h = height;
 
@@ -1649,6 +1699,7 @@ function updateGridPositions() {
   markChanges();
   debounceSaveToFirestore();
 }
+
 
 function computeGridPoints() {
   gridPoints = rowPositions.map(y => columnPositions.map(x => ({ x, y })));

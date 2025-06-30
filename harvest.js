@@ -1,12 +1,22 @@
+//TAKEAWAY LOGS FOR DEBUG
+
+//TAKE IT OUT/ COMMENT IF YOU WANT TO SEE CONSOLE LOGS 
+
+const DEBUG = false;
+if (!DEBUG) {
+  console.log = () => {};
+  console.warn = () => {};
+  console.error = () => {};
+}
+//TAKEAWAY LOGS FOR DEBUG
+
+
 // ========== GLOBAL VARIABLES ========== //
 
 let seedCtrl;
 let growingCtrl;
 let refreshTimer;
 
-// Tracks whether any growth has occurred
-window.hasGrown = false;
-window.lastDrawnHour = null;
 
 
 // ========= Initialize both canvases once ========= //
@@ -80,14 +90,13 @@ function initializeCanvas(seedId) {
   // GROWING SEED CANVAS
   window.growingCtrl = new p5(p => {
     const scaleFactor = 0.2;
-    const MS_PER_HOUR = 1000 * 60 * 60;
-    let lastDrawnHour = -1;
+    let hasFrozenGrowth = false;
   
     p.setup = () => {
       p._gradientCache = {};
   
       const _origCreateGraphics = p.createGraphics;
-      p.createGraphics = function(w, h) {
+      p.createGraphics = function (w, h) {
         const pg = _origCreateGraphics.call(this, w, h);
         pg._renderer._pInst = p;
         return pg;
@@ -108,13 +117,10 @@ function initializeCanvas(seedId) {
         const totalHours = days * 24;
   
         const elapsedMs = Date.now() - startDate.getTime();
-        const elapsedHours = Math.floor(elapsedMs / MS_PER_HOUR);
+        const elapsedHours = elapsedMs / (1000 * 60 * 60);
+        const t = Math.min(Math.max(elapsedHours / totalHours, 0), 1);
   
-        if (elapsedHours !== lastDrawnHour) {
-          lastDrawnHour = elapsedHours;
-  
-          const t = Math.min(Math.max(elapsedHours / totalHours, 0), 1);
-  
+        if (!hasFrozenGrowth) {
           const { sun = 0, water = 0, vitamins = 0 } = window.growthConfig || {};
           window.currentGrowthConfig = {
             sun: sun * t,
@@ -122,7 +128,39 @@ function initializeCanvas(seedId) {
             vitamins: vitamins * t
           };
   
-          console.log('🌿 Updated growth parameters:', window.currentGrowthConfig);
+          if (t >= 1) {
+            hasFrozenGrowth = true;
+            console.log('🌳 Growth complete. Holding final state.');
+  
+            // Actualiza Firestore si aún no está marcado como terminado
+            if (!window.growthConfig.hasFullyGrown) {
+              const docRef = seedsCol.doc(seed);
+              const now = firebase.firestore.Timestamp.now();
+  
+              docRef.set({
+                growthConfig: {
+                  ...window.growthConfig,
+                  hasFullyGrown: true,
+                  growthFinishedAt: now
+                }
+              }, { merge: true }).then(() => {
+                console.log("✅ Firestore updated with full growth");
+                window.growthConfig.hasFullyGrown = true;
+                window.growthConfig.growthFinishedAt = now;
+              
+                // Actualiza en la UI si existe el elemento
+                const lastEl = document.getElementById('growth-last-update');
+                if (lastEl) {
+                  lastEl.textContent = now.toLocaleString();
+                }
+              }).catch(err => {
+                console.error("❌ Error updating full growth:", err);
+              });
+              
+            }
+          } else {
+            console.log('🌿 Updated growth parameters:', window.currentGrowthConfig);
+          }
         }
   
         drawSeedGrowthInst(p, window.currentGrowthConfig, window.currentLayers);
@@ -132,6 +170,14 @@ function initializeCanvas(seedId) {
         p.textAlign(p.CENTER, p.CENTER);
         p.textSize(16);
         p.text('No growth applied yet\nReturn to Root', (w * scaleFactor) / 2, (h * scaleFactor) / 2);
+      }
+            // Mostrar mensaje si la planta ya ha terminado de crecer
+      if (hasFrozenGrowth) {
+        p.noStroke();
+        p.fill(255, 220); // Blanco con un poco de transparencia
+        p.textAlign(p.RIGHT, p.BOTTOM);
+        p.textSize(14);
+        p.text('✓ Fully grown', p.width - 10, p.height - 10);
       }
   
       p.pop();
@@ -239,30 +285,21 @@ function drawGrid(p) {
 }
 
 
-// ========= Fetch data and render both canvases ========= //
+// ========= Fetch data and render original seed ========= //
 async function fetchAndRenderSeed(seedId) {
   console.log('fetchAndRenderSeed called with seedId', seedId);
-  const errorDiv         = document.getElementById('seedError');
-  const plantSummary     = document.getElementById('harvest-summary');
-  const growingContainer = document.getElementById('growing-container');
-  const noGrowthMessage  = document.getElementById('no-growth-message');
-  const growSummary      = document.getElementById('growing-summary');
-  const sunEl            = document.getElementById('sun-value');
-  const waterEl          = document.getElementById('water-value');
-  const vitEl            = document.getElementById('vitamins-value');
-  const daysEl           = document.getElementById('days-elapsed');
-  const totalEl          = document.getElementById('total-days');
-  const lastEl           = document.getElementById('growth-last-update');
 
-  if (!errorDiv || !plantSummary || !growingContainer || !noGrowthMessage || !growSummary ||
-      !sunEl || !waterEl || !vitEl || !daysEl || !totalEl || !lastEl) {
-    console.error('fetchAndRenderSeed: Missing required UI elements');
+  const errorDiv     = document.getElementById('seedError');
+  const plantSummary = document.getElementById('harvest-summary');
+
+  if (!errorDiv || !plantSummary) {
+    console.error('Missing required UI elements for seed');
     if (errorDiv) errorDiv.textContent = 'Error: Missing UI elements';
     return;
   }
 
   if (!window.seedsCol) {
-    console.error('fetchAndRenderSeed: Firestore not initialized');
+    console.error('Firestore not initialized');
     errorDiv.textContent = 'Error: Firestore not available';
     return;
   }
@@ -270,88 +307,28 @@ async function fetchAndRenderSeed(seedId) {
   try {
     const docSnap = await window.seedsCol.doc(seedId).get();
     if (!docSnap.exists) throw new Error('Seed not found');
+
     const data = docSnap.data();
 
-    const hasGrown = Boolean(data.locked) || (data.growthProgress > 0);
+    // Canvas + capas originales
+    window.gridConfig     = data.gridConfig || { rows: 2, cols: 2, canvasWidth: 400, canvasHeight: 300 };
+    window.originalLayers = data.originalLayers || [];
+    window.layers         = window.originalLayers;
 
-    window.gridConfig = data.gridConfig || { rows: 2, cols: 2, canvasWidth: 400, canvasHeight: 300 };
-
-    if (!window.seedCtrl || !window.growingCtrl) {
-      if (!initializeCanvas(seedId)) throw new Error('Failed to initialize canvases');
+    // Inicializar canvas si no existe
+    if (!window.seedCtrl) {
+      if (!initializeCanvas(seedId)) throw new Error('Failed to initialize seed canvas');
     }
 
-    window.originalLayers = data.originalLayers || [];
-    window.currentLayers  = data.layers         || [];
-
-    noGrowthMessage.style.display        = hasGrown ? 'none' : 'block';
-    growSummary.style.display            = hasGrown ? 'block' : 'none';
-    growingContainer.classList.toggle('no-growth', !hasGrown);
-
-    // draw original
-    window.layers = window.originalLayers;
-
-    // draw growth or placeholder
-    if (hasGrown) {
-      window.hasGrown = true; // Esto activa el render del canvas de crecimiento
-      window.layers = window.currentLayers;
-
-    } else {
-      window.hasGrown = false;
-      if (window.growingCtrl) {
-        window.growingCtrl.clear();
-        window.growingCtrl.background(200);
-        window.growingCtrl.textAlign(window.growingCtrl.CENTER, window.growingCtrl.CENTER);
-        window.growingCtrl.text('No growth applied', window.growingCtrl.width/2, window.growingCtrl.height/2);
-      }
-    }    
-
+    // Mostrar fecha de plantado
     const plantedAt = data.plantedAt?.toDate?.() || new Date();
     plantSummary.textContent = `Planted at: ${plantedAt.toLocaleString()}`;
 
-    if (data.growthConfig) {
-      console.log('Displaying growthConfig');
-      const cfg = data.growthConfig;
-      sunEl.textContent   = String(cfg.sun || 0);
-      waterEl.textContent = String(cfg.water || 0);
-      vitEl.textContent   = String(cfg.vitamins || 0);
-
-      const startTs = cfg.startDate?.toDate?.() || plantedAt;
-      const mins    = Math.floor((Date.now() - startTs.getTime()) / 60000);
-      daysEl.textContent  = String(mins);
-      totalEl.textContent = String((cfg.days || 21) * 24 * 60);
-
-      const updatedAt = data.updatedAt?.toDate?.() || new Date();
-      lastEl.textContent = updatedAt.toLocaleString();
-    } else {
-      console.log('No growthConfig, displaying defaults');
-      sunEl.textContent   = '0';
-      waterEl.textContent = '0';
-      vitEl.textContent   = '0';
-      daysEl.textContent  = '0';
-      totalEl.textContent = String(21 * 24 * 60);
-      lastEl.textContent  = 'Not started';
-    }
-
-    if (refreshTimer) clearInterval(refreshTimer);
-    if (hasGrown && data.growthProgress < 100) {
-      refreshTimer = setInterval(() => fetchAndRenderSeed(seedId), 5000);
-    }
-
+    console.log('✅ Seed data loaded correctly');
   } catch (err) {
     console.error('fetchAndRenderSeed error:', err);
-    plantSummary.textContent = `Error: ${err.message}`;
-    errorDiv.textContent     = `Error: ${err.message}`;
-    noGrowthMessage.style.display = 'none';
-    growSummary.style.display     = 'none';
-    growingContainer.classList.add('no-growth');
-
-    if (window.seedCtrl && window.originalLayers) {
-      window.layers = window.originalLayers;
-    }
+    errorDiv.textContent = `Error: ${err.message}`;
   }
-
-  console.log('Final window.layers:', window.layers);
-  console.log(window.layers.length > 0 && Object.keys(window.layers[0].visuals || {}).length > 0 ? '✅ Layers loaded' : '⚠️ No visuals');
 }
 
 // ========= Handle search form lookup ========= //

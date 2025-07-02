@@ -27,7 +27,7 @@ html, body {
   font-size: clamp(8px, 1.5vw, 16px);
   background-color: rgb(245, 245, 245);
   border: 1px solid rgb(74, 67, 61);
-  border-radius: 8px;
+  border-radius: 12px;
   color: rgb(74, 67, 61);
 }
 
@@ -114,7 +114,9 @@ canvas {
   right: 0;
   cursor: nesw-resize;
   width: 30px;
-  height: 30px;border-radius: 8px;
+  height: 30px;
+  border-top-right-radius: 6px;
+  border-bottom-left-radius: 6px; 
   background-color: rgb(237, 237, 237);
   border: 1px solid rgb(74, 67, 61);
   color: #3c3c3c;
@@ -143,12 +145,11 @@ canvas {
 .tool-btn {
   width: 30px;
   height: 30px;
-  border-radius: 8px;
-  background-color: rgb(49, 49, 49);
-  border: 1px solid rgb(237, 237, 237);
+  border-top-right-radius: 6px;
+  border-bottom-left-radius: 6px;
+  background-color: rgb(237, 237, 237);
+  border: 1px solid  rgb(49, 49, 49);
   color: rgb(237, 237, 237);
-  font-size: clamp(8px, 1.5vw, 16px);
-  font-family: 'pixel_DBT';
   display: flex;
   align-items: center;
   justify-content: center;
@@ -182,7 +183,7 @@ canvas {
   max-width: 95vw;
   max-height: 90vh;
   background: transparent;
-  border-radius: 0;
+  border-radius: 12;
   box-shadow: none;
 }
 
@@ -209,14 +210,15 @@ canvas {
 /* CONTENIDO  & TEXTO */
 /*text pop up */
 .popup-content {
-  background: rgba(203, 196, 194, 0.9);
+  background: rgb(237, 237, 237, 0.9);
+  border: 1px solid rgba(60, 60, 60, 0.8);
   padding: 5px;
   color: rgb(60, 60, 60, 0-8);
   font-size: clamp(8px, 1.5vw, 16px);
   overflow-y: auto;
   max-height: 70vh;
-  border-bottom-left-radius: 18px;
-  border-bottom-right-radius: 18px;
+  border-top-right-radius: 12px;
+  border-bottom-left-radius: 12px;
   display: block;
   flex-direction: column;
 }
@@ -252,7 +254,7 @@ body.hide-ui .popup {
 
 .info-style {
   font-family: monospace;
-  background: rgba(49, 49, 49, 0.8);
+  background-color: rgba(203, 196, 194, 0.8);
   color: rgb(60, 60, 60, 0.8);
   max-width: 95vw;      /* ← NUNCA más ancho que pantalla */
   width:max-content;
@@ -262,14 +264,17 @@ body.hide-ui .popup {
   height: auto;
   max-height: 90vh;     /* ← máximo 90% de alto de pantalla */
   padding: 9px;
-  border-radius: 30px;
-  border-top-left-radius: 0;
+  border-top-right-radius: 12px;
+  border-bottom-left-radius: 12px;
   position: fixed;
   top: 50%;
   left: 50%;
+  border: 1px solid rgba(60, 60, 60, 0.8);
   transform: translate(-50%, -50%);
   text-align: center;
 }
+
+
 
 
 .info-style .popup-header {
@@ -300,6 +305,7 @@ body.hide-ui .popup {
 .info-text .info-title {
   background: rgba(49, 49, 49);
   color:  rgba(203, 196, 194, 0.9);
+  border: 1px solid rgba(60, 60, 60, 0.8);
   font-size: clamp(40px, 13vw, 180px); /* Si el pop-up se achica, el título nunca será menos de 40px */ 
   padding-left: 0;
   padding-top: 15px;
@@ -321,6 +327,8 @@ body.hide-ui .popup {
   padding-left: 7px;
   padding-top: 15px;
   padding-bottom: 15px;
+  border-top-right-radius: 6px;
+  border-bottom-left-radius: 6px;
   max-width: 100%;
   font-family: 'JetBrains Mono';
   font-weight: lighter;
@@ -349,7 +357,8 @@ body.hide-ui .popup {
 .info-text .info-section-title {
   background:rgba(49, 49, 49);
   color:  rgba(203, 196, 194);
-  border-top-right-radius: 16px;
+  border-top-right-radius: 12px;
+  border-bottom-left-radius: 12px;
   margin-top: 21px;
   margin-bottom: 21px;
   font-size: clamp(8px, 1.5vw, 16px);
@@ -427,11 +436,12 @@ body.hide-ui .popup {
 #palette-main-wrapper {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: fit-content;
   box-sizing: border-box;
-  background-color: rgba(49, 49, 49,0.8);;
-  border: 1px solid rgba(203, 196, 194);
-  border-top-right-radius: 18px;
+  background-color: rgba(203, 196, 194, 0.8);
+  border: 1px solid rgba(49, 49, 49);
+  border-top-right-radius: 12px;
+  border-bottom-left-radius: 12px;
   padding: 10px;     /* ← El padding da espacio interno al borde */
 }
 
@@ -506,7 +516,7 @@ body.hide-ui .popup {
   border: 1px solid rgb(74, 67, 61);     /* borde gris oscuro */
   font-family: monospace;
   font-size: clamp(8px, 1.5vw, 16px);
-  border-radius: 6px;
+  border-radius: 12px;
   box-shadow: none;
 }
 
@@ -542,7 +552,7 @@ body.hide-ui .popup {
   font-family: 'JetBrains Mono', monospace;
   font-size: clamp(8px, 1.5vw, 16px);
   padding: 3px 14px 3px 14px;
-  border-radius: 0px 14px 0 0;
+  border-radius: 0px 12px 0 0;
   cursor: pointer;
   font-weight: lighter;
   min-width: 0;
@@ -562,7 +572,8 @@ body.hide-ui .popup {
   font-family: 'JetBrains Mono', monospace;
   font-size: clamp(8px, 1.5vw, 16px);
   padding: 3px 14px 3px 14px;
-  border-radius: 0px 14px 0 0;
+  border-top-right-radius: 12px;
+  border-bottom-left-radius: 12px;
   cursor: pointer;
   transition: background 0.13s, color 0.13s;
   font-weight: lighter;
@@ -581,7 +592,7 @@ body.hide-ui .popup {
   color: rgba(203, 196, 194);       /* Texto claro */
   font-family: 'JetBrains Mono', monospace;
   font-size: clamp(8px, 1.5vw, 16px);
-  border-radius: 0px 14px 0 0;
+  border-radius: 0px 12px 0 0;
   font-weight: lighter;
   width: 100%;
   padding: 6px 18px 0 18px;
@@ -633,9 +644,10 @@ body.hide-ui .popup {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  border-top-right-radius: 18px;
+  border-top-right-radius: 12px;
+  border-bottom-left-radius: 12px;
   padding: 10px;
-  background-color: rgba(203, 196, 194, 0.9);
+  background-color: rgba(236, 235, 235, 0.9);
   height: 100%;
   overflow-y: auto;
   align-items: center;
@@ -679,7 +691,7 @@ body.hide-ui .popup {
 #tools-title {
   background: rgb(74, 67, 61);
   color:  rgb(203, 196, 194);
-  font-size: clamp(12px, 2vw, 18px);
+  font-size: clamp(8px, 1.5vw, 16px);
   display: flex;
   align-items: flex-start;    /* CORREGIDO aquí */
   font-family: 'JetBrains Mono', monospace;
@@ -687,8 +699,10 @@ body.hide-ui .popup {
   width: fit-content;
   max-width: fit-content;
   max-height: fit-content;
-  padding: 5px;
-  border-top-right-radius: 18px;
+  padding: 3px 14px 3px 14px;
+  border-radius: 0px;
+  border-bottom-right-radius: 12px;
+  border-top-left-radius: 12px;
   margin-bottom: 0;
   margin-top: 0;
 }
@@ -716,7 +730,8 @@ body.hide-ui .popup {
 #options-shape,
 #options-grid,
 #options-image,
-#options-growth {
+#options-growth,
+#options-export {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -762,4 +777,106 @@ body.hide-ui .popup {
   height: 100%; /* o el alto de tu panel */
   overflow-y: auto;
   background: #f8f8f8;
+}
+
+
+
+/* UI FOR THE SEED BAR */ /* UI FOR THE SEED BAR */ /* UI FOR THE SEED BAR */
+
+/* ── Seed search & display ── */
+#seed-search-ui {
+  position: fixed;
+  bottom: 12px;
+  right: 12px;
+  z-index: 9999;                /* por encima del canvas */
+  font-family: 'JetBrains Mono', monospace;
+}
+#seed-search-input {
+  width: auto;
+  padding: 4px 8px;
+  background: #fff;
+  color: #000;
+  border: 1px solid #000;
+  border-top-right-radius: 12px;
+  border-bottom-left-radius: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1rem;
+  text-align: center;
+}
+
+/* Input semilla casi transparente y full opacity on hover/focus */
+#seed-search-input {
+  opacity: 0.2;                      /* muy baja por defecto */
+  transition: opacity 0.25s ease;    /* transición suave */
+}
+
+#seed-search-input:hover,
+#seed-search-input:focus {
+  opacity: 1;                        /* full opacity al pasar el ratón o hacer focus */
+}
+
+/* UI FOR THE SEED BAR */ /* UI FOR THE SEED BAR */ /* UI FOR THE SEED BAR */
+
+
+/* TOOLS HELPER */ /* TOOLS HELPER */ /* TOOLS HELPER */ /* TOOLS HELPER */ /* TOOLS HELPER */ 
+/* Oculta panel derecho si está colapsado */
+#palette.panels-collapsed #palette-panels {
+  display: none;
+}
+
+/* Cuando está expandido, muestra el panel */
+#palette:not(.panels-collapsed) #palette-panels {
+  display: block;
+}
+
+/* TOOLS HELPER */ /* TOOLS HELPER */ /* TOOLS HELPER */ /* TOOLS HELPER */ /* TOOLS HELPER */ 
+
+/* ANIMATION PAUSE */ /* ANIMATION PAUSE */ /* ANIMATION PAUSE */ /* ANIMATION PAUSE */ /* ANIMATION PAUSE */
+.pause-btn {
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  z-index: 9999;
+  background: white;
+  border: 1px solid #000;
+  border-top-right-radius: 12px;
+  border-bottom-left-radius: 12px;
+  padding: 6px;
+  cursor: pointer;
+}
+
+.pause-btn img {
+  width: 16px;
+  height: 16px;
+}
+
+
+.tool-btn img{
+width: 16px;
+height: 16px;
+}
+
+.pause-btn {
+  opacity: 0.2;                      /* muy baja por defecto */
+  transition: opacity 0.25s ease;    /* transición suave */
+}
+
+.pause-btn:hover,
+.pause-btn:focus {
+  opacity: 1;                        /* full opacity al pasar el ratón o hacer focus */
+}
+
+
+/* ANIMATION PAUSE */ /* ANIMATION PAUSE */ /* ANIMATION PAUSE */ /* ANIMATION PAUSE */ /* ANIMATION PAUSE */
+
+
+#manual-resize-controls {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: white;
+  border: 1px solid #ccc;
+  padding: 6px;
+  border-radius: 4px;
+  z-index: 999;
 }

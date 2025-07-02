@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Modulariem</title>
+  <title>root</title>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
@@ -11,7 +11,9 @@
 <body>
 
     <!--LIBRERIAS DE JS-->
+    <!-- CC CAPTURE JS FOR EXPORTING METHODS -->
 
+  
     <!-- FIREBASE GOOGLE CLOUD -->
 
     <!-- Firebase App (core) -->
@@ -33,6 +35,22 @@
   <!-- Canvas wrapper -->
   <div id="canvas-wrapper"></div>
 
+<!-- Hidden canvas size controls -->
+<div id="manual-resize-controls" style="display: none; gap: 8px; margin-top: 10px;">
+  <label>W: <input type="number" id="canvas-width-input" min="200" style="width: 70px;" /></label>
+  <label>H: <input type="number" id="canvas-height-input" min="200" style="width: 70px;" /></label>
+  <button id="apply-canvas-size">Apply</button>
+</div>
+
+
+
+
+  <!-- Seed search & display -->
+  <div id="seed-search-ui">
+    <input type="text" id="seed-search-input" maxlength="7" size="7" />
+  </div>
+
+
   <!-- TIPPY -->
 
     <!-- CHOICES-->
@@ -47,17 +65,38 @@
     <div id="palette-main">
       <!-- Columna de tools -->
       <div id="palette-tools-col">
-        <div id="tools-title" class="tools-capsule popup-header draggable">Tools</div>
+        <div id="tools-title" class="tools-capsule popup-header draggable">root</div>
         <div id="palette-tools">
-          <button class="tool-btn" data-tool="grid" data-tippy-content="Edit grid">;</button>
-          <button class="tool-btn" data-tool="gradient" data-tippy-content="Draw gradient">ß</button>
-          <button class="tool-btn" data-tool="shape" data-tippy-content="Draw shape">Á</button>
-          <button class="tool-btn" data-tool="text" data-tippy-content="Text module">A</button>
-          <button class="tool-btn" data-tool="image" data-tippy-content="Insert image">Þ</button>
-          <button class="tool-btn" data-tool="erase" data-tippy-content="Erase module">Ã</button>
-          <button class="tool-btn" data-tool="growth" data-tippy-content="Growth settings">€</button>
-          <button class="tool-btn" id="unify-btn" data-tippy-content="Unify movement">~</button>
-          <button class="tool-btn" id="editGridButton" data-tippy-content="Edit grid values">%</button>
+          <button class="tool-btn" data-tool="grid" data-tippy-content="Edit grid">
+            <img src="tool-icons/R_editgrid-on.svg" alt="" />
+          </button>  
+          <button class="tool-btn" data-tool="gradient" data-tippy-content="Draw gradient">
+            <img src="tool-icons/R_gradient-off.svg" alt="" />
+          </button>  
+          <button class="tool-btn" data-tool="shape" data-tippy-content="Draw shape">
+            <img src="tool-icons/R_shape-off.svg" alt="" />
+          </button> 
+          <button class="tool-btn" data-tool="erase" data-tippy-content="Eraser">
+            <img src="tool-icons/R_erase-off.svg" alt="" />
+          </button>
+          <button class="tool-btn" data-tool="growth" data-tippy-content="Growth Settings">
+            <img src="tool-icons/R_growthset-off.svg" alt="" />
+          </button> 
+          <button class="tool-btn" id="unify-btn" data-tippy-content="Unifier">
+            <img src="tool-icons/R_unify-off.svg" alt="" />
+          </button>
+          <button class="tool-btn" id="editGridButton" data-tippy-content="Edit grid values">
+            <img src="tool-icons/R_editgrid-off.svg" alt="" />
+          </button>
+          <button class="tool-btn" id="seed-btn" data-tippy-content="Generate new seed">
+            <img src="tool-icons/R_genseed-off.svg" alt="" />
+          </button>
+          <button class="tool-btn" data-tool="export" id="export-btn" data-tippy-content="Download Plant">
+            <img src="tool-icons/R_export-off.svg" alt="" />
+          </button>
+          <button class="tool-btn" id="info-btn" data-tippy-content="Info & Help">
+            <img src="tool-icons/R_info-off.svg" alt="" />
+          </button>    
         </div>
       </div>
       
@@ -129,17 +168,21 @@
             <button id="editGridConfirm">Confirm Grid</button>
           </div>
           <div class="tool-options" id="options-growth">
-            <label>Sun <input type="range" name="sun" min="0" max="10" value="50"></label>
-            <label>Water <input type="range" name="water" min="0" max="10" value="50"></label>
-            <label>Vitamins <input type="range" name="vitamins" min="0" max="10" value="50"></label>
-            <label>Days <input type="number" name="days" min="1" max="21" value="30"></label>
+            <label>Sun <input type="range" name="sun" min="0" max="10" value="1"></label>
+            <label>Water <input type="range" name="water" min="0" max="10" value="1"></label>
+            <label>Vitamins <input type="range" name="vitamins" min="0" max="10" value="1"></label>
+            <label>Days <input type="number" name="days" min="1" max="21" value="1"></label>
             <button id="applyGrowthBtn">Apply Growth</button>
             <button id="cloneSeedBtn" style="display: none;">Clone Seed</button>
+          </div> 
+          </div><div class="tool-options" id="options-export">
+            <label>Formato de descarga:</label>
+            <select id="export-format">
+              <option value="png">PNG</option>
+              <option value="Webp">WebP(Video)</option>
+            </select>
+            <button id="download-button">Descargar</button>
           </div>
-          <div class="tool-options" id="options-color">
-            <label>Color (WIP) <input type="color" value="#ff00ff"></label>
-          </div>
-        </div>
          <!-- TÍTULO LAYERS FUERA Y ENCIMA -->
          <div class="header-pill layers-header">Layers</div>
             <div id="palette-layers">
@@ -156,16 +199,6 @@
         </div>
       </div>
     </div>
-    <!-- Sidebar a la derecha -->
-    <div id="palette-sidebar-wrapper">
-      <div id="palette-sidebar">
-                <button class="tool-btn" id="seed-btn" data-tippy-content="Generate new seed">‘</button>
-                <button class="tool-btn" id="harvest-btn" data-tippy-content="Open current seed view">L</button>
-                <button class="tool-btn" id="export-btn" data-tippy-content="Export image">€</button>
-                <button class="tool-btn" id="info-btn" data-tippy-content="Open info panel">?</button>
-              </div>
-            </div>
-            </div>
       <!-- scripts for help -->
     <script>
       window.addEventListener('DOMContentLoaded', () => {
@@ -462,11 +495,16 @@
 
   
   <input type="file" id="image-loader" accept="image/*" style="display:none" />
-<script src="utils.js"></script>
+
+
+<!-- Versión empaquetada con todo lo necesario -->
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.8/dist/ffmpeg.min.js"></script>
 <script src="common.js"></script>
 <script src="growthfx.js"></script>
 <script src="growth.js"></script>
 <script src="sketch.js"></script>
-<script src="setupGrowth.js"></script>  
+<script src="setupGrowth.js"></script>
+<script src="utils.js"></script> 
+ 
 </body>
 </html>

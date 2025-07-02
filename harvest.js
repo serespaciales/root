@@ -1,5 +1,6 @@
 //TAKEAWAY LOGS FOR DEBUG
 
+
 //TAKE IT OUT/ COMMENT IF YOU WANT TO SEE CONSOLE LOGS 
 
 const DEBUG = false;
@@ -9,6 +10,8 @@ if (!DEBUG) {
   console.error = () => {};
 }
 //TAKEAWAY LOGS FOR DEBUG
+
+
 
 
 // ========== GLOBAL VARIABLES ========== //
@@ -29,9 +32,11 @@ function initializeCanvas(seedId) {
 
   window.globalFrameCount = 0;
 
-  fetchAndRenderSeed(seedId);
-  fetchAndRenderGrowth(seedId);
-  startGrowthPolling(seedId, 5000);
+  fetchAndRenderSeed(seedId).then(() => {
+    // Ahora sí ya existe window.originalLayers
+    fetchAndRenderGrowth(seedId);
+    startGrowthPolling(seedId, 5000);
+  });
 
   //==================== THESE CALLS DRAW BOTH CANVAS ========================///
   // ORIGINAL SEED CANVAS
@@ -39,6 +44,7 @@ function initializeCanvas(seedId) {
     const scaleFactor = 0.2;
   
     p.setup = () => {
+      p.frameRate(12); //FRAME RATE PARA QUE NO SE SOBRECARGUE LA PAGINA
       // 1) Inicializa cache de gradientes
       window.gradientCache = {};
   
@@ -90,19 +96,45 @@ function initializeCanvas(seedId) {
   // GROWING SEED CANVAS
   window.growingCtrl = new p5(p => {
     const scaleFactor = 0.2;
+    const TEST_MODE   = true;    // 21s → 21d
     let hasFrozenGrowth = false;
+    let w, h;
+  
+    // MediaRecorder vars
+    let recorder, recordedChunks = [];
   
     p.setup = () => {
+      p.frameRate(12);
+      w = window.gridConfig.canvasWidth;
+      h = window.gridConfig.canvasHeight;
       p._gradientCache = {};
   
-      const _origCreateGraphics = p.createGraphics;
-      p.createGraphics = function (w, h) {
-        const pg = _origCreateGraphics.call(this, w, h);
+      // Patch para createGraphics
+      const _orig = p.createGraphics;
+      p.createGraphics = (gw, gh) => {
+        const pg = _orig.call(p, gw, gh);
         pg._renderer._pInst = p;
         return pg;
       };
   
-      p.createCanvas(w * scaleFactor, h * scaleFactor).parent(growingWrapper);
+      // Canvas
+      p.createCanvas(w * scaleFactor, h * scaleFactor)
+       .parent(growingWrapper);
+  
+      // Inicia grabación a 1fps
+      const stream = p.canvas.captureStream(1);
+      recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+      recorder.ondataavailable = e => { if (e.data.size) recordedChunks.push(e.data); };
+      recorder.onstop = () => {
+        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = 'growth.webm';
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+      recorder.start(1000);  // chunk cada 1s
     };
   
     p.draw = () => {
@@ -112,77 +144,54 @@ function initializeCanvas(seedId) {
       drawGrid(p);
   
       if (window.hasGrown && window.currentLayers?.length) {
-        const startDate = new Date(window.growthConfig?.startDate || new Date());
-        const days = window.growthConfig?.days || 21;
-        const totalHours = days * 24;
+        // 1) rawT en [0,1]
+        const now       = Date.now();
+        const startMs   = new Date(window.growthConfig.startDate).getTime();
+        const elapsedMs = now - startMs;
+        const days      = window.growthConfig.days; // normalmente 21
   
-        const elapsedMs = Date.now() - startDate.getTime();
-        const elapsedHours = elapsedMs / (1000 * 60 * 60);
-        const t = Math.min(Math.max(elapsedHours / totalHours, 0), 1);
+        const rawT = TEST_MODE
+          ? Math.min(elapsedMs/1000/days, 1)
+          : Math.min(elapsedMs/(days*86400000), 1);
   
+        // 2) Curva logística
+        const t = logisticEase(rawT, 12);
+  
+        // 3) Actualiza growthConfig mientras crece
         if (!hasFrozenGrowth) {
-          const { sun = 0, water = 0, vitamins = 0 } = window.growthConfig || {};
+          const { sun = 0, water = 0, vitamins = 0 } = window.normGrowthConfig;
           window.currentGrowthConfig = {
-            sun: sun * t,
-            water: water * t,
+            sun:      sun      * t,
+            water:    water    * t,
             vitamins: vitamins * t
           };
-  
-          if (t >= 1) {
+          if (rawT >= 1) {
             hasFrozenGrowth = true;
-            console.log('🌳 Growth complete. Holding final state.');
-  
-            // Actualiza Firestore si aún no está marcado como terminado
-            if (!window.growthConfig.hasFullyGrown) {
-              const docRef = seedsCol.doc(seed);
-              const now = firebase.firestore.Timestamp.now();
-  
-              docRef.set({
-                growthConfig: {
-                  ...window.growthConfig,
-                  hasFullyGrown: true,
-                  growthFinishedAt: now
-                }
-              }, { merge: true }).then(() => {
-                console.log("✅ Firestore updated with full growth");
-                window.growthConfig.hasFullyGrown = true;
-                window.growthConfig.growthFinishedAt = now;
-              
-                // Actualiza en la UI si existe el elemento
-                const lastEl = document.getElementById('growth-last-update');
-                if (lastEl) {
-                  lastEl.textContent = now.toLocaleString();
-                }
-              }).catch(err => {
-                console.error("❌ Error updating full growth:", err);
-              });
-              
-            }
-          } else {
-            console.log('🌿 Updated growth parameters:', window.currentGrowthConfig);
+            recorder.stop();  // detiene y descarga
+            console.log('🌳 Fully grown – simulación completada.');
           }
         }
   
+        // 4) Dibuja el crecimiento
         drawSeedGrowthInst(p, window.currentGrowthConfig, window.currentLayers);
-      } else {
-        p.background(0);
-        p.fill(255);
-        p.textAlign(p.CENTER, p.CENTER);
-        p.textSize(16);
-        p.text('No growth applied yet\nReturn to Root', (w * scaleFactor) / 2, (h * scaleFactor) / 2);
       }
-            // Mostrar mensaje si la planta ya ha terminado de crecer
+  
+      // Indicador de fully grown
       if (hasFrozenGrowth) {
+        p.push();
         p.noStroke();
-        p.fill(255, 220); // Blanco con un poco de transparencia
+        p.fill(255, 220);
         p.textAlign(p.RIGHT, p.BOTTOM);
         p.textSize(14);
         p.text('✓ Fully grown', p.width - 10, p.height - 10);
+        p.pop();
       }
   
       p.pop();
     };
   });
+  
+  
   
   return true;
 }
@@ -470,35 +479,4 @@ function _getCellBuffer(p, cache, row, col, cellW, cellH) {
   return cache[key];
 }
 
-// 2) Dibuja el gradiente en un p5.Graphics usando SOLO métodos de `p`
-function updateGradientBufferInst(p, pg, colors, offset = 0, frameCountOverride) {
-  const steps = pg.height;
-  pg.noStroke();
-  pg.clear();
 
-  // Usa el frameCount de la instancia si no se pasa override
-  const fc = (frameCountOverride != null) ? frameCountOverride : p.frameCount;
-
-  for (let i = 0; i < steps; i++) {
-    const t  = i / steps;
-    const tt = (t + offset + fc * 0.01) % 1;
-
-    // Color base
-    const c0 = p.color(colors[0]);
-    let colr;
-    if (colors.length === 3) {
-      // De color0→color1 en la mitad baja, luego 1→2 en la mitad alta
-      if (tt < 0.5) {
-        colr = p.lerpColor(c0, p.color(colors[1]), tt * 2);
-      } else {
-        colr = p.lerpColor(p.color(colors[1]), p.color(colors[2]), (tt - 0.5) * 2);
-      }
-    } else {
-      // Sólo dos colores
-      colr = p.lerpColor(c0, p.color(colors[1] || "#000000"), tt);
-    }
-
-    pg.stroke(colr);
-    pg.line(0, i, pg.width, i);
-  }
-}

@@ -39,7 +39,10 @@ async function fetchAndRenderGrowth(seedId) {
 
   // — Datos y capas
   window.gridConfig    = data.gridConfig;
-  window.currentLayers = data.layers || [];
+  window.currentLayers = mergeLayers(
+    window.originalLayers,          // ya cargado en fetchAndRenderSeed
+    data.layers       || []
+  );
   window.hasGrown      = true;
 
   const gc        = data.growthConfig || {};
@@ -48,6 +51,7 @@ async function fetchAndRenderGrowth(seedId) {
   const totalDays = gc.days    || 21;
   const prevDay   = gc.lastGrowthDay || 0;
 
+  // — Configuración “cruda”
   window.growthConfig = {
     sun:              gc.sun       || 0,
     water:            gc.water     || 0,
@@ -57,6 +61,16 @@ async function fetchAndRenderGrowth(seedId) {
     lastGrowthDay:    prevDay,
     hasFullyGrown:    gc.hasFullyGrown    || false,
     growthFinishedAt: gc.growthFinishedAt?.toDate?.() || null
+  };
+
+  // — Normalizamos a [0,1] con máximos 10
+  const MAX_SUN      = 10;
+  const MAX_WATER    = 10;
+  const MAX_VITAMINS = 10;
+  window.normGrowthConfig = {
+    sun:      Math.min(1, window.growthConfig.sun      / MAX_SUN),
+    water:    Math.min(1, window.growthConfig.water    / MAX_WATER),
+    vitamins: Math.min(1, window.growthConfig.vitamins / MAX_VITAMINS),
   };
 
   // — Actualizar UI básica
@@ -71,7 +85,7 @@ async function fetchAndRenderGrowth(seedId) {
   daysEl.textContent  = String(elapsedDays);
   totalEl.textContent = String(totalDays);
 
-  // — Mostrar última actualización actual (antes de posible sobrescritura)
+  // — Mostrar última actualización antes de posible sobrescritura
   const updatedAtRaw = data.updatedAt?.toDate?.() || now;
   lastEl.textContent = updatedAtRaw.toLocaleString();
 
@@ -89,7 +103,6 @@ async function fetchAndRenderGrowth(seedId) {
       updatedAt: now
     });
     console.log(`✅ Cruzado nuevo día: ${elapsedDays}, updatedAt seteado a ${now.toLocaleString()}`);
-    // Reflejar en memoria y UI
     window.growthConfig.lastGrowthDay = elapsedDays;
     lastEl.textContent = now.toLocaleString();
   }
@@ -104,7 +117,6 @@ async function fetchAndRenderGrowth(seedId) {
     window.growingCtrl.redraw();
   }
 }
-
 
 
 // Exportar para poder llamarla desde tu código principal:

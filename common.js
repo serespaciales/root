@@ -341,7 +341,12 @@ function updateGradientBuffer(pg, colors, offset, frameCountOverride) {
   pg.noStroke();
   pg.clear();
 
-  const fc = frameCountOverride !== undefined ? frameCountOverride : (typeof frameCount !== "undefined" ? frameCount : 0);
+  const fc = animationsPaused
+  ? pausedFrameCount  // ✅ congelado en el frame real donde pausaste
+  : (frameCountOverride !== undefined
+      ? frameCountOverride
+      : (typeof frameCount !== "undefined" ? frameCount : 0));
+
 
   // Detectar si estamos en modo instancia
   const p = pg._renderer._pInst || null;

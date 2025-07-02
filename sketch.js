@@ -10,7 +10,16 @@
 // 
 // 
 // 
-// 
+// //TAKE IT OUT/ COMMENT IF YOU WANT TO SEE CONSOLE LOGS 
+
+const DEBUG = false;
+if (!DEBUG) {
+  console.log = () => {};
+  console.warn = () => {};
+  console.error = () => {};
+}
+//TAKEAWAY LOGS FOR DEBUG
+
 // 
 // 
 // 
@@ -31,6 +40,8 @@ window.layers = window.layers || [];
 window.activeLayer = window.activeLayer || null;
 window.activeTool = window.activeTool || "gradient";
 
+let animationsPaused = false; //PAUSAR EL CRECIMIENTO GLOBAL, AYUDA CON EL LAG !!!
+let pausedFrameCount = 0; // GUARDA EL ULTIMO VALUE DEL FRAME PARA STOP ANIMATION
 let sliders = {};
 let canvas;
 let editingGrid = false;
@@ -246,6 +257,34 @@ function getOrCreateSeed() {
 
 const seed = getOrCreateSeed();
 
+//SEED BAR FOR THE INDEX UI 
+
+// ── Seed search UI ──
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('seed-search-input');
+  if (!input) return;
+  // Inicializa con el seed actual
+  input.value = seed;
+  // Al pulsar Enter recarga con ?seed=…
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      const s = input.value.trim();
+      if (/^[A-Za-z0-9]{7}$/.test(s)) {
+        const url = new URL(window.location);
+        url.searchParams.set('seed', s);
+        window.location.href = url.toString();
+      } else {
+        // destello de error
+        input.style.borderColor = 'red';
+        setTimeout(() => input.style.borderColor = '#000', 300);
+      }
+    }
+  });
+});
+
+//SEED BAR FOR THE INDEX UI 
+
+
 function saveGridConfig() {
   markChanges();
   debounceSaveToFirestore();
@@ -323,6 +362,7 @@ function setup() {
         window.open(`harvest.html?seed=${seed}`, '_blank', 'noopener');
       });
     }
+   
 
     sliders.rows = select('input[name="rows"]') || { value: () => 6 };
     sliders.columns = select('input[name="columns"]') || { value: () => 6 };
@@ -430,6 +470,8 @@ seedsCol.doc(seed).get().then(doc => {
     seedsCol.doc(seed).set({
       seedCode: seed,
       layers: window.layers,
+      layers: window.layers,
+      originalLayers: window.layers,  
       gridConfig: {
         rows,
         cols,
@@ -475,112 +517,140 @@ seedsCol.doc(seed).get().then(doc => {
     setupImageUpload();
   }
 
+  
+
   setupSliderFeedback('.grid-sliders label');
   setupToolLogic();
   setupUnifyButton();
   setupGridEditingLogic();
   setupResizerHandle();
   setupGrowthIntegration();
+  setupPauseButton(); 
 
   activeBorderColor = color(0, 255, 0);
 }
 
-
-
 function setupResizerHandle() {
   if (MODE !== 'edit') {
-      console.log('this is is an editing function');
-      return;
+    console.log('this is an editing function');
+    return;
   }
+
   const wrapper = document.getElementById('canvas-wrapper');
 
   const fullscreenBtn = document.createElement('div');
-  fullscreenBtn.innerHTML = 'O';
+  fullscreenBtn.innerHTML = `<img src="tool-icons/R_fullscreen-off.svg" alt="" />`;
   fullscreenBtn.title = "Fullscreen";
   fullscreenBtn.classList.add('tool-btn', 'fullscreen-btn');
   wrapper.appendChild(fullscreenBtn);
 
   const resizer = document.createElement('div');
   resizer.classList.add('tool-btn', 'resizer', 'top-right');
-  resizer.innerHTML = 'Z';
+  resizer.innerHTML = `<img src="tool-icons/R_resizer-off.svg" alt="" />`;
   wrapper.appendChild(resizer);
+
+  // ✅ Get manual input UI
+  const manualResizeControls = document.getElementById('manual-resize-controls');
+  const widthInput = document.getElementById('canvas-width-input');
+  const heightInput = document.getElementById('canvas-height-input');
+  const applyBtn = document.getElementById('apply-canvas-size');
 
   let isFullscreen = false;
 
   function enterFullscreen() {
-      isFullscreen = true;
-      document.body.classList.add('hide-ui');
-      wrapper.style.position = 'fixed';
-      wrapper.style.top = '0';
-      wrapper.style.left = '0';
-      wrapper.style.width = '100vw';
-      wrapper.style.height = '100vh';
-      resizeCanvas(window.innerWidth, window.innerHeight);
-      updateGridPositions();
-      fullscreenBtn.innerHTML = '±';
+    isFullscreen = true;
+    document.body.classList.add('hide-ui');
+    wrapper.style.position = 'fixed';
+    wrapper.style.top = '0';
+    wrapper.style.left = '0';
+    wrapper.style.width = '100vw';
+    wrapper.style.height = '100vh';
+    resizeCanvas(window.innerWidth, window.innerHeight);
+    updateGridPositions();
+    fullscreenBtn.innerHTML = `<img src="tool-icons/R_fullscreen-on.svg" alt="" />`;
   }
 
   function exitFullscreen() {
-      isFullscreen = false;
-      document.body.classList.remove('hide-ui');
-      wrapper.style.position = 'absolute';
-      wrapper.style.top = '5px';
-      wrapper.style.left = '5px';
-      wrapper.style.width = 'calc(100vw - 10px)';
-      wrapper.style.height = 'calc(100vh - 10px)';
-      resizeCanvas(wrapper.offsetWidth, wrapper.offsetHeight);
-      updateGridPositions();
-      fullscreenBtn.innerHTML = 'O';
+    isFullscreen = false;
+    document.body.classList.remove('hide-ui');
+    wrapper.style.position = 'absolute';
+    wrapper.style.top = '5px';
+    wrapper.style.left = '5px';
+    wrapper.style.width = 'calc(100vw - 10px)';
+    wrapper.style.height = 'calc(100vh - 10px)';
+    resizeCanvas(wrapper.offsetWidth, wrapper.offsetHeight);
+    updateGridPositions();
+    fullscreenBtn.innerHTML = `<img src="tool-icons/R_fullscreen-off.svg" alt="" />`;
   }
 
   fullscreenBtn.addEventListener('click', () => {
-      isFullscreen ? exitFullscreen() : enterFullscreen();
+    isFullscreen ? exitFullscreen() : enterFullscreen();
   });
 
   window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && isFullscreen) {
-          exitFullscreen();
-      }
+    if (e.key === 'Escape' && isFullscreen) {
+      exitFullscreen();
+    }
   });
 
+  // 🖱️ Drag-resize
   resizer.addEventListener('mousedown', e => {
-      e.preventDefault();
-      const startX = e.clientX;
-      const startY = e.clientY;
-      const startW = wrapper.offsetWidth;
-      const startH = wrapper.offsetHeight;
+    e.preventDefault();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startW = wrapper.offsetWidth;
+    const startH = wrapper.offsetHeight;
 
-      function resize(e) {
-          let newW = startW + (e.clientX - startX);
-          let newH = startH + (e.clientY - startY);
-          newW = Math.min(newW, window.innerWidth - wrapper.offsetLeft - 5);
-          newH = Math.min(newH, window.innerHeight - wrapper.offsetTop - 5);
-          newW = Math.max(200, newW);
-          newH = Math.max(200, newH);
-          wrapper.style.width = `${newW}px`;
-          wrapper.style.height = `${newH}px`;
-          resizeCanvas(newW, newH);
-          updateGridPositions();
-      }
+    function resize(e) {
+      let newW = startW + (e.clientX - startX);
+      let newH = startH + (e.clientY - startY);
+      newW = Math.min(newW, window.innerWidth - wrapper.offsetLeft - 5);
+      newH = Math.min(newH, window.innerHeight - wrapper.offsetTop - 5);
+      newW = Math.max(200, newW);
+      newH = Math.max(200, newH);
+      wrapper.style.width = `${newW}px`;
+      wrapper.style.height = `${newH}px`;
+      resizeCanvas(newW, newH);
+      updateGridPositions();
+    }
 
-      function stopResize() {
-          window.removeEventListener('mousemove', resize);
-          window.removeEventListener('mouseup', stopResize);
-      }
+    function stopResize() {
+      window.removeEventListener('mousemove', resize);
+      window.removeEventListener('mouseup', stopResize);
+      debounceSaveToFirestore(); // Save when resizing stops
+    }
 
-      window.addEventListener('mousemove', resize);
-      window.addEventListener('mouseup', stopResize);
+    window.addEventListener('mousemove', resize);
+    window.addEventListener('mouseup', stopResize);
   });
 
-  
+  // ✅ Show manual resize inputs on click
+  resizer.addEventListener('click', () => {
+    if (!manualResizeControls || !widthInput || !heightInput) return;
+    const visible = manualResizeControls.style.display === 'flex';
+    manualResizeControls.style.display = visible ? 'none' : 'flex';
+
+    if (!visible) {
+      widthInput.value = wrapper.offsetWidth;
+      heightInput.value = wrapper.offsetHeight;
+    }
+  });
+
+  // ✅ Apply manual width/height
+  applyBtn?.addEventListener('click', () => {
+    const newW = parseInt(widthInput.value);
+    const newH = parseInt(heightInput.value);
+
+    if (!isNaN(newW) && !isNaN(newH) && newW >= 200 && newH >= 200) {
+      wrapper.style.width = `${newW}px`;
+      wrapper.style.height = `${newH}px`;
+      resizeCanvas(newW, newH);
+      updateGridPositions();
+      debounceSaveToFirestore();
+    }
+  });
 }
 
-if (!window.layers || window.layers.length === 0) {
-  createLayer();
-}
-if (!window.activeLayer && window.layers.length > 0) {
-  window.activeLayer = window.layers[0];
-}
 
 /**
  * Carga en el sketch el estado guardado de un seed:
@@ -643,13 +713,13 @@ function drawSeed() {
 function draw() {
   drawSeed();
   // Feedback de cursor cuadrado verde
-  if (editingGrid || activeTool) {
-    noFill();
-    stroke(0, 255, 0);
-    strokeWeight(1);
-    rect(mouseX - 5, mouseY - 5, 10, 10);
+  if ( editingGrid || (activeTool && activeTool !== 'export') ) {
+    stroke(60, 60, 60);         // ahora: gris oscuro (60,60,60)
+    strokeWeight(1);            // 1px de ancho
+    fill(237, 237, 237);        // blanco muy claro
+    ellipse(mouseX, mouseY, 17, 17);
   }
-
+  
   // Rectángulo verde al dibujar texto
   if (activeTool === "text" && textStartCell) {
     const col1 = textStartCell.col;
@@ -743,7 +813,10 @@ function drawVisuals() {
           visual.pg = createGraphics(w, h);
           visual.pg.pixelDensity(1);
         }
-        updateGradientBuffer(visual.pg, visual.colors, visual.offset || 0);
+        const currentFrame = animationsPaused ? pausedFrameCount : frameCount;
+        updateGradientBuffer(visual.pg, visual.colors, visual.offset || 0, currentFrame);
+
+
         image(visual.pg, x, y, w, h);
       }
       else if (visual.type === "text" && visual.text) {

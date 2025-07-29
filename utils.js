@@ -48,63 +48,66 @@ function rgbToHsl(r, g, b) {
   //TOOL PALETTE HELPER 
 
   // ── Control de paleta colapsable (módulo utils.js) ──
-document.addEventListener('DOMContentLoaded', () => {
-  const PALETTE   = document.getElementById('palette');
-  const TOOL_BTNS = document.querySelectorAll('#palette-tools .tool-btn');
-  const PANELS    = document.querySelectorAll('.tool-options');
-  let collapseTimer;
-
-  // Arranca colapsado
-  if (PALETTE) PALETTE.classList.add('panels-collapsed');
-
-  function resetCollapseTimer() {
-    clearTimeout(collapseTimer);
-    collapseTimer = setTimeout(() => {
-      if (PALETTE) PALETTE.classList.add('panels-collapsed');
-      TOOL_BTNS.forEach(b => b.classList.remove('active'));
-      const defaultPanel = document.getElementById('options-default');
-      if (defaultPanel) defaultPanel.style.display = 'block';
-    }, 5000);
-  }
-
-  function showPanel(tool) {
-    TOOL_BTNS.forEach(b => b.classList.remove('active'));
-    PANELS.forEach(p => p.style.display = 'none');
-
-    const btn = document.querySelector(`.tool-btn[data-tool="${tool}"]`);
-    const panel = document.getElementById(`options-${tool}`);
-    if (btn && panel) {
-      btn.classList.add('active');
-      panel.style.display = 'flex';
-      if (PALETTE) PALETTE.classList.remove('panels-collapsed');
-      resetCollapseTimer();
+  document.addEventListener('DOMContentLoaded', () => {
+    const PALETTE   = document.getElementById('palette');
+    const TOOL_BTNS = document.querySelectorAll('.tool-btn');
+    const PANELS    = document.querySelectorAll('.tool-options');
+    let collapseTimer;
+  
+    // Arranca colapsado
+    if (PALETTE) PALETTE.classList.add('panels-collapsed');
+  
+    function resetCollapseTimer() {
+      clearTimeout(collapseTimer);
+      collapseTimer = setTimeout(() => {
+        PALETTE.classList.add('panels-collapsed');
+        TOOL_BTNS.forEach(b => b.classList.remove('active'));
+        const defaultPanel = document.getElementById('options-default');
+        if (defaultPanel) defaultPanel.style.display = 'block';
+      }, 3000);
     }
-  }
-
-  TOOL_BTNS.forEach(btn =>
-    btn.addEventListener('click', () => showPanel(btn.dataset.tool))
-  );
-
-  if (PALETTE) {
-    PALETTE.addEventListener('mouseenter', () => clearTimeout(collapseTimer));
-    PALETTE.addEventListener('mouseleave', resetCollapseTimer);
-  }
-
-  // Mostrar panel default al inicio
-  const defaultPanel = document.getElementById('options-default');
-  if (defaultPanel) defaultPanel.style.display = 'block';
-});
-
+  
+    function showPanel(tool) {
+      TOOL_BTNS.forEach(b => b.classList.remove('active'));
+      PANELS.forEach(p => p.style.display = 'none');
+    
+      const btn   = document.querySelector(`.tool-btn[data-tool="${tool}"]`);
+      const panel = document.getElementById(`options-${tool}`);
+    
+      if (btn) btn.classList.add('active');
+      if (panel) {
+        panel.style.display = 'flex';
+        PALETTE.classList.remove('panels-collapsed');
+      }
+    }
+  
+    TOOL_BTNS.forEach(btn =>
+      btn.addEventListener('click', () => showPanel(btn.dataset.tool))
+    );
+  
+    if (PALETTE) {
+      // Al entrar, detenemos cualquier timer pendiente
+      PALETTE.addEventListener('mouseenter', () => clearTimeout(collapseTimer));
+      // Al salir, iniciamos el timer
+      PALETTE.addEventListener('mouseleave', resetCollapseTimer);
+    }
+  
+    // Mostrar panel default al inicio
+    const defaultPanel = document.getElementById('options-default');
+    if (defaultPanel) defaultPanel.style.display = 'block';
+  });
+  
   //TOOL PALETTE HELPER 
 
 
 
-   //========================0STOP ANIMATION LOGIC ========================
-   function setupPauseButton() {
-    const pauseBtn = document.createElement('button');
-    pauseBtn.classList.add('pause-btn', 'has-tooltip');
-    pauseBtn.innerHTML = `<img src="tool-icons/R_stopanim.svg" alt="Pause" />`;
-    pauseBtn.title = "Pause plant"; // fallback accesible
+  function setupPauseButton() {
+    const pauseBtn = document.getElementById('pause-btn');
+    const bottomButtons = document.getElementById('bottom-buttons'); // Get parent container
+    if (!pauseBtn) {
+      console.warn('❌ pause-btn not found');
+      return;
+    }
   
     // Tooltip inicial
     const tooltip = tippy(pauseBtn, {
@@ -118,17 +121,20 @@ document.addEventListener('DOMContentLoaded', () => {
   
       if (animationsPaused) {
         pausedFrameCount = frameCount;
+        pausedMillis = millis(); // Save current millis for pause
         pauseBtn.querySelector('img').src = 'tool-icons/R_playanim.svg';
         pauseBtn.title = "Resume animations";
-        tooltip[0].setContent("Resume plant");
+        tooltip.setContent("Resume plant");
+        pauseBtn.classList.add('active'); // Add active class to button
+        if (bottomButtons) bottomButtons.classList.add('active'); // Add to parent for opacity fix
       } else {
         pauseBtn.querySelector('img').src = 'tool-icons/R_stopanim.svg';
         pauseBtn.title = "Pause animations";
-        tooltip[0].setContent("Pause plant");
+        tooltip.setContent("Pause plant");
+        pauseBtn.classList.remove('active'); // Remove active class
+        if (bottomButtons) bottomButtons.classList.remove('active'); // Remove from parent
       }
     });
-  
-    document.body.appendChild(pauseBtn);
   }
   //========================0STOP ANIMATION LOGIC ========================
   //========================0STOP ANIMATION LOGIC ========================

@@ -42,6 +42,7 @@ window.activeTool = window.activeTool || "gradient";
 
 let animationsPaused = false; //PAUSAR EL CRECIMIENTO GLOBAL, AYUDA CON EL LAG !!!
 let pausedFrameCount = 0; // GUARDA EL ULTIMO VALUE DEL FRAME PARA STOP ANIMATION
+let pausedMillis = 0;
 let sliders = {};
 let canvas;
 let editingGrid = false;
@@ -332,200 +333,180 @@ function randomColorFromNeonPalette() {
 }
 
 function setup() {
-  // 1. Setup del canvas
-  if (MODE === 'edit') {
-    let container = select('#canvas-wrapper')?.elt;
-    if (!container) {
-      console.error('Canvas wrapper not found in edit mode');
-      return;
-    }
-    canvas = createCanvas(container.clientWidth, container.clientHeight);
-    canvas.parent('canvas-wrapper');
-    canvas.elt.setAttribute('tabindex', '0');
-    canvas.style('display', 'block');
-    canvas.style('width', '100%');
-    canvas.style('height', '100%');
-  } else {
-    canvas = createCanvas(800, 600);
-  }
+  // ⚡ Detenemos el loop hasta tener los datos
+  noLoop();
 
-  gradientBuffer = createGraphics(width, height);
-
-  // 2. Inicialización de sliders → esto debe ir ANTES del fetch
+  // 1. Inicializamos los sliders E input de seed (antes del fetch)
   if (MODE === 'edit') {
     const seedInput = select('input[name="seed"]');
     if (seedInput) seedInput.value(seed);
 
     const btn = document.getElementById('seed-btn');
-    if (btn) {
-      btn.addEventListener('click', () => {
-        window.open(`harvest.html?seed=${seed}`, '_blank', 'noopener');
-      });
-    }
-   
+    if (btn) btn.addEventListener('click', () =>
+      window.open(`index.html?seed=`, '_blank', 'noopener')
+    );
 
-    sliders.rows = select('input[name="rows"]') || { value: () => 6 };
-    sliders.columns = select('input[name="columns"]') || { value: () => 6 };
-    sliders.sun = select('input[name="sun"]') || { value: () => 0 };
-    sliders.water = select('input[name="water"]') || { value: () => 0 };
-    sliders.vitamins = select('input[name="vitamins"]') || { value: () => 0 };
-    sliders.days = select('input[name="days"]') || { value: () => 1 };
+    sliders.rows     = select('input[name="rows"]')    || { value: () => 6 };
+    sliders.columns  = select('input[name="columns"]') || { value: () => 6 };
+    sliders.sun      = select('input[name="sun"]')     || { value: () => 0 };
+    sliders.water    = select('input[name="water"]')   || { value: () => 0 };
+    sliders.vitamins = select('input[name="vitamins"]')|| { value: () => 0 };
+    sliders.days     = select('input[name="days"]')    || { value: () => 1 };
 
-    if (typeof sliders.rows.value !== 'function') sliders.rows.value = () => 6;
-    if (typeof sliders.columns.value !== 'function') sliders.columns.value = () => 6;
-    if (typeof sliders.sun.value !== 'function') sliders.sun.value = () => 0;
-    if (typeof sliders.water.value !== 'function') sliders.water.value = () => 0;
-    if (typeof sliders.vitamins.value !== 'function') sliders.vitamins.value = () => 0;
-    if (typeof sliders.days.value !== 'function') sliders.days.value = () => 1;
-  } else {
-    sliders.rows = { value: () => 6 };
-    sliders.columns = { value: () => 6 };
-    sliders.sun = { value: () => 0 };
-    sliders.water = { value: () => 0 };
-    sliders.vitamins = { value: () => 0 };
-    sliders.days = { value: () => 1 };
+    // Aseguramos .value() correcto
+    ['rows','columns','sun','water','vitamins','days'].forEach(k => {
+      if (typeof sliders[k].value !== 'function')
+        sliders[k].value = () => parseInt(sliders[k].elt?.value || 6, 10);
+    });
   }
-// 3. Función de capa por defecto
-const initializeDefaultLayer = (rows = 2, cols = 2) => {
-  const defaultLayer = {
-    id: generateLayerID(),
-    name: "gradient 1",
-    type: "gradient",
-    color: randomColorFromNeonPalette(),
-    visible: true,
-    visuals: {}
+
+  // 2. Función de capa por defecto (solo para new seed)
+  const initializeDefaultLayer = (r = 2, c = 2) => {
+    const L = {
+      id: generateLayerID(),
+      name: "gradient 1",
+      type: "gradient",
+      color: randomColorFromNeonPalette(),
+      visible: true,
+      visuals: {}
+    };
+    for (let i = 0; i < r; i++) {
+      for (let j = 0; j < c; j++) {
+        L.visuals[`${i}-${j}`] = {
+          type: "gradient",
+          colors: [
+            randomColorFromNeonPalette(),
+            randomColorFromNeonPalette(),
+            randomColorFromNeonPalette()
+          ],
+          offset: random(0, 1)
+        };
+      }
+    }
+    return L;
   };
-  for (let i = 0; i < rows; i++) {
-    for (let j = 0; j < cols; j++) {
-      defaultLayer.visuals[`${i}-${j}`] = {
-        type: "gradient",
-        colors: [
-          randomColorFromNeonPalette(),
-          randomColorFromNeonPalette(),
-          randomColorFromNeonPalette()
-        ],
-        offset: random(0, 1)
-      };
-    }
-  }
-  return defaultLayer;
-};
 
-// 4. Fetch de Firestore
-seedsCol.doc(seed).get().then(doc => {
-  let rows = parseInt(sliders.rows?.value() || 6);
-  let cols = parseInt(sliders.columns?.value() || 6);
+  // 3. Fetch inicial a Firestore (tamaño + contenido)
+  const container = select('#canvas-wrapper').elt;
+  seedsCol.doc(seed).get().then(doc => {
+    let rows = 6, cols = 6;
+    let w = container.clientWidth;
+    let h = container.clientHeight;
 
-  if (doc.exists) {
-    const data = doc.data();
+    if (doc.exists) {
+      const data = doc.data();
 
-    if (data.gridConfig) {
-      rows = data.gridConfig.rows || rows;
-      cols = data.gridConfig.cols || cols;
-    }
+      // 3.1 Si guardaste tamaño, lo aplicas
+      if (data.gridConfig?.canvasWidth && data.gridConfig?.canvasHeight) {
+        w = data.gridConfig.canvasWidth;
+        h = data.gridConfig.canvasHeight;
+        container.style.width  = `${w}px`;
+        container.style.height = `${h}px`;
+      }
 
-    // 🔥 Aquí actualizamos los sliders
-    if (sliders.rows?.value && sliders.columns?.value) {
-      sliders.rows.value(rows);
-      sliders.columns.value(cols);
-    }
+      // 3.2 Ahora creas el canvas con el tamaño correcto
+      canvas = createCanvas(w, h).parent('canvas-wrapper');
+      canvas.elt.setAttribute('tabindex', '0');
+      canvas.style('display', 'block');
+      canvas.style('width', '100%');
+      canvas.style('height', '100%');
 
-    if (data.layers && Array.isArray(data.layers)) {
-      window.layers = data.layers;
+      gradientBuffer = createGraphics(width, height);
+
+      // 3.3 Leemos filas/cols guardadas
+      if (data.gridConfig) {
+        rows = data.gridConfig.rows  || rows;
+        cols = data.gridConfig.cols  || cols;
+      }
+
+      // 🔥 Actualiza sliders
+      if (MODE === 'edit') {
+        sliders.rows.value(rows);
+        sliders.columns.value(cols);
+      }
+
+      // 3.4 Cargamos layers guardadas o creamos nueva
+      if (Array.isArray(data.layers)) {
+        window.layers = data.layers;
+      } else {
+        window.layers = [ initializeDefaultLayer(rows, cols) ];
+        seedsCol.doc(seed).set({
+          seedCode: seed,
+          layers: window.layers,
+          originalLayers: window.layers,
+          gridConfig: { rows, cols, canvasWidth: w, canvasHeight: h },
+          plantedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      }
+
+      // 3.5 Lock si corresponde
+      if (data.locked) {
+        disableEditingControls();
+        window.growthManager?.init(seed);
+        window.growthManager?.lockSeed();
+      }
     } else {
-      window.layers = [initializeDefaultLayer(rows, cols)];
+      // 🌱 Nueva semilla: calculamos aleatorio, creamos canvas con CSS inicial,
+      // y luego guardamos layers + gridConfig
+      canvas = createCanvas(container.clientWidth, container.clientHeight)
+                .parent('canvas-wrapper');
+      canvas.elt.setAttribute('tabindex','0');
+      canvas.style('display','block');
+      canvas.style('width','100%');
+      canvas.style('height','100%');
+      gradientBuffer = createGraphics(width, height);
+
+      rows = Math.floor(random(2,9));
+      cols = Math.floor(random(2,9));
+      if (MODE === 'edit') {
+        sliders.rows.value(rows);
+        sliders.columns.value(cols);
+      }
+
+      window.layers = [ initializeDefaultLayer(rows, cols) ];
       seedsCol.doc(seed).set({
         seedCode: seed,
         layers: window.layers,
+        originalLayers: window.layers,
         gridConfig: {
-          rows,
-          cols,
-          canvasWidth: width || 800,
-          canvasHeight: height || 600
+          rows, cols,
+          canvasWidth: width, canvasHeight: height
         },
         plantedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true }).catch(err => console.error('Error saving default seed:', err));
+      }, { merge: true });
     }
 
-    if (data.locked) {
-      disableEditingControls();
-      if (window.growthManager) {
-        window.growthManager.init(seed);
-        window.growthManager.lockSeed();
-      }
-    }
+    // 4. Una vez creado canvas y cargados layers:
+    window.activeLayer = window.layers[0] || null;
+    updateGridPositions();
+    if (MODE === 'edit') renderLayersUI();
+    redraw();
+    loop();  // ¡arrancamos ya el draw()!
+  }).catch(err => {
+    console.error('Error loading seed:', err);
+    // Fallback: creamos canvas normal y layers por defecto
+    canvas = createCanvas(container.clientWidth, container.clientHeight)
+             .parent('canvas-wrapper');
+    gradientBuffer = createGraphics(width, height);
+    window.layers = [ initializeDefaultLayer() ];
+    window.activeLayer = window.layers[0];
+    updateGridPositions();
+    if (MODE === 'edit') renderLayersUI();
+    redraw();
+    loop();
+  });
 
-  } else {
-    // 🌱 NUEVA SEMILLA → valores aleatorios de 2 a 8
-    rows = Math.floor(random(2, 9));
-    cols = Math.floor(random(2, 9));
-
-    // 🔥 Actualizamos sliders también
-    if (sliders.rows?.value && sliders.columns?.value) {
-      sliders.rows.value(rows);
-      sliders.columns.value(cols);
-    }
-
-    window.layers = [initializeDefaultLayer(rows, cols)];
-    seedsCol.doc(seed).set({
-      seedCode: seed,
-      layers: window.layers,
-      layers: window.layers,
-      originalLayers: window.layers,  
-      gridConfig: {
-        rows,
-        cols,
-        canvasWidth: width || 800,
-        canvasHeight: height || 600
-      },
-      plantedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true }).catch(err => console.error('Error creating new seed:', err));
-  }
-
-  window.activeLayer = window.layers[0] || null;
-  updateGridPositions();
-  if (MODE === 'edit') renderLayersUI();
-  redraw();
-  console.log('Layers loaded on setup:', window.layers.map(l => l.name));
-}).catch(err => {
-  console.error('Error loading from Firestore:', err);
-  window.layers = [initializeDefaultLayer()];
-  window.activeLayer = window.layers[0];
-  updateGridPositions();
-  if (MODE === 'edit') renderLayersUI();
-  redraw();
-});
-
-
-  // 5. Inicializaciones restantes
-  updateGridPositions();
-
-  const gradientColor1 = document.getElementById("gradient-color-1");
-  const gradientColor2 = document.getElementById("gradient-color-2");
-  const gradientColor3 = document.getElementById("gradient-color-3");
-  if (gradientColor1 && gradientColor2 && gradientColor3) {
-    setupGradientColorInputs();
-  }
-
-  const infoPopup = document.getElementById('info-popup');
-  if (infoPopup) {
-    setupInfoPopup();
-  }
-
-  const imageFileInput = document.getElementById("image-file-input");
-  if (imageFileInput) {
-    setupImageUpload();
-  }
-
-  
-
+  // 5. Inicializaciones UI que no dependen de load
+  setupGradientColorInputs();
+  setupInfoPopup();
+  setupImageUpload();
   setupSliderFeedback('.grid-sliders label');
   setupToolLogic();
   setupUnifyButton();
   setupGridEditingLogic();
   setupResizerHandle();
   setupGrowthIntegration();
-  setupPauseButton(); 
+  setupPauseButton();
 
   activeBorderColor = color(0, 255, 0);
 }
@@ -703,7 +684,6 @@ function drawSeed() {
   // Restore active layer for editing
   window.activeLayer = window.layers.find(l => l.id === window.activeLayer?.id) || window.layers[0] || null;
 
-  updateGlobalGradient(["#ff00ff", "#00ffff", "#ffffff"]);
 
   if (editingGrid) drawGridHandles();
 
@@ -807,18 +787,27 @@ function drawVisuals() {
       const w = B.x - A.x;
       const h = D.y - A.y;
 
-      if (visual.type === "gradient" && visual.colors) {
-        // Recreate p5.Graphics if not present or size changed
-        if (!visual.pg || visual.pg.width !== w || visual.pg.height !== h) {
-          visual.pg = createGraphics(w, h);
-          visual.pg.pixelDensity(1);
-        }
-        const currentFrame = animationsPaused ? pausedFrameCount : frameCount;
-        updateGradientBuffer(visual.pg, visual.colors, visual.offset || 0, currentFrame);
+      // Inside drawVisuals() function, replace the gradient drawing block with this optimized version
+// that uses normalized offset for consistent animation speed across different cell heights.
 
+// Inside drawVisuals() function, replace the gradient drawing block with this updated version
+// that adds a cycle back to the first color for seamless looping without jumps.
 
-        image(visual.pg, x, y, w, h);
-      }
+// Inside drawVisuals() function, replace the gradient drawing block with this updated version
+// that uses a fixed 2x cycle length to eliminate clamping and ensure seamless looping without jumps.
+
+if (visual.type === 'gradient' && visual.colors?.length >= 2) {
+  push(); translate(x, y); noStroke();
+  const fc = animationsPaused ? pausedFrameCount : frameCount;
+  let o = (fc * 0.01 + (useUnifiedOffset ? globalOffset : visual.offset || 0)) % 1;
+  let c = visual.colors, n = c.length;
+  let s = [];
+  for (let i = 0; i <= n; i++) s.push([color(c[i % n]), i / n / 2]); // ciclo 1
+  for (let i = 0; i <= n; i++) s.push([color(c[i % n]), 0.5 + i / n / 2]); // ciclo 2
+  fillGradient('linear', { from: [0, -h * o], to: [0, h * (2 - o)], steps: s }, drawingContext);
+  rect(0, 0, w, h); pop();
+} 
+      
       else if (visual.type === "text" && visual.text) {
         const wCells = visual.w || 1;
         const hCells = visual.h || 1;
@@ -1005,7 +994,9 @@ function drawVisuals() {
           const s = visual.shape;
           push();
           translate(x0, y0);
-          drawShape(w0, h0, s.shapeType, s.fillColor, s.strokeColor, s.size, r, c, activeLayer.visuals);
+          const fc = animationsPaused ? pausedFrameCount : frameCount;  // Paused frame for breathing
+          const time = fc * 0.005;  // Time for organic noise (also paused)
+          drawShape(w0, h0, s.shapeType, s.fillColor, s.strokeColor, s.size, r, c, activeLayer.visuals, time, fc);  // Pass time and fc
           pop();
           visual.w = wCells;
           visual.h = hCells;
@@ -1859,11 +1850,12 @@ function drawShape(w, h, shapeType = "circle", fillColor = '#000000', strokeColo
   const self = visuals[`${r}-${c}`]?.shape;
   if (!self) return;
 
-  // 2) Calcula el pulso de breathing
-  const t     = millis() / 1000;                      // segundos desde que arranca p5
-  const amp   = self.breathAmplitude  || 0;           // ej. 0.1 → ±10%
-  const freq  = self.breathSpeed      || 1;           // ciclos por segundo
-  const phase = self.breathPhase      || 0;           // fase inicial aleatoria
+  // 2) Calcula el pulso de breathing con tiempo pausado
+  const currentMillis = animationsPaused ? pausedMillis : millis();  // Freeze time when paused
+  const t = currentMillis / 1000;  // Paused seconds
+  const amp   = self.breathAmplitude || 0;
+  const freq  = self.breathSpeed     || 1;
+  const phase = self.breathPhase     || 0;
   const pulse = 1 + amp * Math.sin(TWO_PI * freq * t + phase);
 
   // 3) Ajusta el tamaño según el pulso
@@ -1889,27 +1881,18 @@ function drawShape(w, h, shapeType = "circle", fillColor = '#000000', strokeColo
   translate(w / 2, h / 2);
   rotate(rotationRad);
 
-
   if (shapeType === "circle") {
     drawCircleConnected(w, h, baseR, neighbors, fillColor, strokeColor);
-  }
-
-  else if (shapeType === "square") {
+  } else if (shapeType === "square") {
     drawSquareConnected(w, h, baseR, neighbors, fillColor, strokeColor);
-  }
-
-  else if (shapeType === "star") {
+  } else if (shapeType === "star") {
     drawStarConnected(w, h, baseR, neighbors, fillColor, strokeColor, 5); // o 6, etc.
+  } else if (shapeType === "organic") {
+    drawOrganicConnected(w, h, baseR, neighbors, fillColor, strokeColor, t);  // Pass paused t for noise
   }
-  
-  else if (shapeType === "organic") {
-    drawOrganicConnected(w, h, baseR, neighbors, fillColor, strokeColor);
-  }
-  
   
   pop();
 }
-
 
 //shapes: STAR
 
@@ -1957,7 +1940,7 @@ function smoothEdge(angle, targetDeg, width = 30) {
 }
 
 
-function drawOrganicConnected(w, h, r, neighbors, fillColor, strokeColor) {
+function drawOrganicConnected(w, h, r, neighbors, fillColor, strokeColor, time) {  // <-- Add time to signature (remove internal fc/time)
   if (MODE === 'view') return;
   fill(fillColor);
   stroke(strokeColor);
@@ -1966,7 +1949,6 @@ function drawOrganicConnected(w, h, r, neighbors, fillColor, strokeColor) {
   const steps = 100;
   const noiseFreq = 1.2;
   const noiseAmp = r * 0.6;
-  const time = frameCount * 0.005;
 
   beginShape();
   for (let i = 0; i <= steps; i++) {
@@ -1976,7 +1958,7 @@ function drawOrganicConnected(w, h, r, neighbors, fillColor, strokeColor) {
     const y0 = sin(angle);
 
     // Perturbación base
-    const n = noise(x0 * noiseFreq + 10, y0 * noiseFreq + 10, time);
+    const n = noise(x0 * noiseFreq + 10, y0 * noiseFreq + 10, time);  // <-- Use passed time
     let base = r + (n - 0.5) * noiseAmp;
 
     // Suavizar conexiones con vecinos
@@ -1994,7 +1976,6 @@ function drawOrganicConnected(w, h, r, neighbors, fillColor, strokeColor) {
   }
   endShape(CLOSE);
 }
-
 
 //shapes: CIRCLE
 function drawCircleConnected(w, h, r, neighbors, fillColor, strokeColor) {
@@ -2123,7 +2104,6 @@ function setupToolLogic() {
     image: "Image",
     texture: "Texture",
     grid: "Grid",
-    growth: "Growth",
     layers: "Layers",
     erase: "Erase",
     color: "Color"
@@ -2154,6 +2134,43 @@ function setupToolLogic() {
   });
 }
 
+function setupGrowthPopup() {
+  const popup = document.getElementById('growth-popup');
+  const openBtn = document.getElementById('growth-btn');
+  const closeBtn = popup.querySelector('.popup-close');
+  const bottomButtons = document.getElementById('bottom-buttons');  // Get the parent
+
+  // Start hidden
+  popup.style.display = 'none';
+
+  // Open / bring to front
+  openBtn.addEventListener('click', () => {
+    const isHidden = getComputedStyle(popup).display === 'none';
+    popup.style.display = isHidden ? 'flex' : 'none';
+    popup.style.zIndex = ++topZIndex;
+
+    // Toggle .active on PARENT (#bottom-buttons)
+    if (isHidden) {
+      bottomButtons.classList.add('active');  // Add to parent
+      // Optionally add to openBtn too if needed for other styles: openBtn.classList.add('active');
+    } else {
+      bottomButtons.classList.remove('active');  // Remove from parent
+      // Optionally: openBtn.classList.remove('active');
+    }
+  });
+
+  // Close
+  closeBtn.addEventListener('click', () => {
+    popup.style.display = 'none';
+    bottomButtons.classList.remove('active');  // Remove from parent
+    // Optionally: openBtn.classList.remove('active');
+  });
+
+  makePopupDraggable(popup);
+}
+
+// Call this during your UI setup phase:
+setupGrowthPopup();
 
 
 
@@ -2179,7 +2196,7 @@ function setupUnifyButton() {
       } else {
         console.error('Unify button still not found after delay');
       }
-    }, 100);
+    }, 1000);
     return;
   }
   btn.addEventListener('click', () => {

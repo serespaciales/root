@@ -112,10 +112,6 @@ async function fetchAndRenderGrowth(seedId) {
   noGrowthMessage.style.display   = 'none';
   growingContainer.classList.remove('no-growth');
 
-  // — Redibujar canvas derecho
-  if (window.growingCtrl && window.growingCtrl.redraw) {
-    window.growingCtrl.redraw();
-  }
 }
 
 
@@ -174,38 +170,32 @@ window.stopGrowthPolling  = stopGrowthPolling;
  * @param {number} [offset=0]         - Desfase inicial del gradiente (0…1)
  * @param {number} [frameCountOverride] - Si se quiere usar un frameCount distinto al de p
  */
-function updateGradientBufferInst(p, pg, colors, offset = 0, frameCountOverride) {
-  const steps = pg.height;
-  pg.noStroke();
-  pg.clear();
+function updateGradientBufferInst(colors, offset = 0, frame = frameCount) {
+  const h = height;
+  const o = (frame * 0.01 + offset) % 1;
+  const n = colors.length;
 
-  // Usa frameCountOverride si se pasa, o p.frameCount por defecto
-  const fc = frameCountOverride != null ? frameCountOverride : p.frameCount;
+  if (n < 2) return;
 
-  for (let i = 0; i < steps; i++) {
-    const t  = i / steps;
-    const tt = (t + offset + fc * 0.01) % 1;
+  const stops = [];
 
-    // Color base
-    const c0 = p.color(colors[0]);
-    let colr;
-
-    if (colors.length === 3) {
-      // De color0→color1 en la primera mitad, luego 1→2
-      if (tt < 0.5) {
-        colr = p.lerpColor(c0, p.color(colors[1]), tt * 2);
-      } else {
-        colr = p.lerpColor(p.color(colors[1]), p.color(colors[2]), (tt - 0.5) * 2);
-      }
-    } else {
-      // Solo dos colores
-      colr = p.lerpColor(c0, p.color(colors[1] || "#000000"), tt);
-    }
-
-    pg.stroke(colr);
-    pg.line(0, i, pg.width, i);
+  // Primera mitad (0 → 0.5)
+  for (let i = 0; i <= n; i++) {
+    stops.push([color(colors[i % n]), i / n / 2]);
   }
+
+  // Segunda mitad (0.5 → 1)
+  for (let i = 0; i <= n; i++) {
+    stops.push([color(colors[i % n]), 0.5 + i / n / 2]);
+  }
+
+  fillGradient('linear', {
+    from: [0, -h * o],
+    to: [0, h * (2 - o)],
+    steps: stops
+  }, drawingContext);
 }
+
 
 //== GRADIENT HELPER GROWING BY STEPS 
 
@@ -218,7 +208,8 @@ function updateGradientBufferInst(p, pg, colors, offset = 0, frameCountOverride)
  * @param {{sun:number, water:number, vitamins:number}} growthConfig - Niveles de crecimiento
  * @param {Array} layers - Capas actuales con elementos visuales por celda (r-c)
  */
-function drawSeedGrowthInst(p, growthConfig = {}, layers = null) {
+// Adapt drawSeedGrowthInst to global (in growth.js, remove 'p' params and use global functions)
+function drawSeedGrowthInst(growthConfig = {}, layers = null) {
   const { rows, cols, canvasWidth, canvasHeight } = window.gridConfig;
   const cellW = canvasWidth / cols;
   const cellH = canvasHeight / rows;
@@ -229,8 +220,6 @@ function drawSeedGrowthInst(p, growthConfig = {}, layers = null) {
     return;
   }
 
-  const cache = p._gradientCache || (p._gradientCache = {});
-
   for (const layer of target) {
     if (!layer.visuals) continue;
 
@@ -238,60 +227,50 @@ function drawSeedGrowthInst(p, growthConfig = {}, layers = null) {
       const [r, c] = cellKey.split('-').map(Number);
       if (!Number.isInteger(r) || !Number.isInteger(c)) continue;
 
-      p.push();
-      p.translate(c * cellW, r * cellH);
+      translate(c * cellW, r * cellH);
 
       if (visual.type === 'gradient' && Array.isArray(visual.colors)) {
-        const tmp = { ...visual, colors: [...visual.colors] };
-        const bufKey = `r${r}c${c}`;
-        let pg = cache[bufKey];
-
-        // Inicializa el buffer si no existe
-        if (!pg) {
-          try {
-            const safeW = Math.max(1, Math.floor(cellW));
-            const safeH = Math.max(1, Math.floor(cellH));
-            pg = p.createGraphics(safeW, safeH);
-            pg.pixelDensity(p.pixelDensity());
-            pg._renderer._pInst = p; // ✅ patch necesario
-            cache[bufKey] = pg;
-          } catch (err) {
-            console.error(`💥 Error al crear graphics buffer para ${bufKey}:`, err);
-            continue;
-          }
+        let tmpColors = [...visual.colors];
+      
+        if (growthConfig?.sun) {
+          tmpColors = applySunBurnEffect(tmpColors, growthConfig.sun);
         }
-
-        // Aplicar efectos de crecimiento
-        if (growthConfig.sun) {
-          tmp.colors = applySunBurnEffect(p, tmp.colors, growthConfig.sun);
+        if (growthConfig?.vitamins) {
+          tmpColors = applySaturationBoost(tmpColors, growthConfig.vitamins);
         }
-        if (growthConfig.vitamins) {
-          tmp.colors = applySaturationBoost(p, tmp.colors, growthConfig.vitamins);
+      
+        noStroke();
+      
+        let o = (frameCount * 0.01 + (visual.offset || 0)) % 1;
+        let n = tmpColors.length;
+        let s = [];
+        for (let i = 0; i <= n; i++) s.push([color(tmpColors[i % n]), i / n / 2]);
+        for (let i = 0; i <= n; i++) s.push([color(tmpColors[i % n]), 0.5 + i / n / 2]);
+      
+        fillGradient('linear', {
+          from: [0, -cellH * o],
+          to: [0, cellH * (2 - o)],
+          steps: s
+        }, drawingContext);
+      
+        rect(0, 0, cellW, cellH);
+      
+        if (growthConfig?.water) {
+          applyWaterWobble(drawingContext, growthConfig.water, frameCount); // si aplicas sobre el canvas principal
         }
-
-        // 🌀 Siempre actualizar el contenido del buffer para que haya animación
-        updateGradientBufferInst(p, pg, tmp.colors, tmp.offset || 0, p.frameCount);
-
-        p.image(pg, 0, 0);
-
-        if (growthConfig.water) {
-          applyWaterWobble(pg, growthConfig.water, p.frameCount);
+      
+        if (visual.bloom) {
+          applyBloomExpansion(null, visual);
         }
-
-        if (tmp.bloom) {
-          applyBloomExpansion(p, tmp);
-        }
-
       } else if (visual.type === 'shape' && visual.shape) {
         const s = visual.shape;
         let sizePct = s.size != null ? s.size : 1;
         if (sizePct <= 1) sizePct *= 100;
 
-        p.push();
-        p.tint(255, 255 * (s.opacity ?? 1));
+        push();
+        tint(255, 255 * (s.opacity ?? 1));
 
         drawShape(
-          p,
           cellW, cellH,
           s.shapeType || 'circle',
           s.fillColor || '#ffffff',
@@ -300,22 +279,22 @@ function drawSeedGrowthInst(p, growthConfig = {}, layers = null) {
           r, c,
           layer.visuals
         );
-        p.pop();
+        pop();
 
         if (s.extrudePct || s.subdivisions || s.tint || visual.bloom) {
-          p.push();
-          applyBloomExpansion(p, visual);
-          p.pop();
+          push();
+          applyBloomExpansion(visual);
+          pop();
         }
 
         if (visual.speckles?.pct || visual.blur) {
-          p.push();
-          applyMossMirage(p, visual, cellW, cellH);
-          p.pop();
+          push();
+          applyMossMirage(visual, cellW, cellH);
+          pop();
         }
       }
 
-      p.pop();
+      translate(-c * cellW, -r * cellH);  // Reset translate (global)
     }
   }
 }

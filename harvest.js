@@ -3,7 +3,7 @@
 
 //TAKE IT OUT/ COMMENT IF YOU WANT TO SEE CONSOLE LOGS 
 
-const DEBUG = false;
+const DEBUG = true;
 if (!DEBUG) {
   console.log = () => {};
   console.warn = () => {};
@@ -12,189 +12,123 @@ if (!DEBUG) {
 //TAKEAWAY LOGS FOR DEBUG
 
 
-
+const TEST_MODE = true; 
 
 // ========== GLOBAL VARIABLES ========== //
-
+let canvas;
 let seedCtrl;
 let growingCtrl;
 let refreshTimer;
+let hasFrozenGrowth = false;
 
 
+function draw() {
+  if (!window.gridConfig) return;
+  clear();
+  drawGrid();
 
-// ========= Initialize both canvases once ========= //
+  if (window.hasGrown && window.currentLayers?.length) {
+    const now = Date.now();
+    const startMs = new Date(window.growthConfig.startDate).getTime();
+    const elapsedMs = now - startMs;
+    const days = window.growthConfig.days;
+
+    const rawT = TEST_MODE
+      ? Math.min(elapsedMs / 1000 / days, 1)
+      : Math.min(elapsedMs / (days * 86400000), 1);
+
+    const t = logisticEase(rawT, 12);
+
+    if (!hasFrozenGrowth) {
+      const { sun = 0, water = 0, vitamins = 0 } = window.normGrowthConfig;
+      window.currentGrowthConfig = {
+        sun: sun * t,
+        water: water * t,
+        vitamins: vitamins * t
+      };
+      if (rawT >= 1) {
+        hasFrozenGrowth = true;
+        console.log('🌳 Fully grown');
+      }
+    }
+
+    drawSeedGrowthInst(window.currentGrowthConfig, window.currentLayers);
+  }
+
+  if (hasFrozenGrowth) {
+    noStroke();
+    fill(255, 220);
+    textAlign(RIGHT, BOTTOM);
+    textSize(14);
+    text('✓ Fully grown', width - 10, height - 10);
+  }
+}
+
+
+// ========= Initialize the single growing canvas (global p5) ========= //
 function initializeCanvas(seedId) { 
   console.log('initializeCanvas called');
-  const canvasWrapper = document.getElementById('canvas-wrapper');
   const growingWrapper = document.getElementById('growing-wrapper');
   const w = window.gridConfig?.canvasWidth || 600;
   const h = window.gridConfig?.canvasHeight || 600;
 
   window.globalFrameCount = 0;
 
-  fetchAndRenderSeed(seedId).then(() => {
-    // Ahora sí ya existe window.originalLayers
-    fetchAndRenderGrowth(seedId);
-    startGrowthPolling(seedId, 5000);
-  });
+  setup = () => {
+    window.gradientCache = {};
+    canvas = createCanvas(w, h).parent(growingWrapper);
+    gradientBuffer = createGraphics(w, h);  // Add this line here
+    loop();
+  };
 
-  //==================== THESE CALLS DRAW BOTH CANVAS ========================///
-  // ORIGINAL SEED CANVAS
-  window.seedCtrl = new p5(p => {
-    const scaleFactor = 0.2;
-  
-    p.setup = () => {
-      p.frameRate(12); //FRAME RATE PARA QUE NO SE SOBRECARGUE LA PAGINA
-      // 1) Inicializa cache de gradientes
-      window.gradientCache = {};
-  
-      // 2) Patch de createGraphics para que todo buffer conozca a la instancia `p`
-      const _origCreateGraphics = p.createGraphics;
-      p.createGraphics = function(w, h) {
-        const pg = _origCreateGraphics.call(this, w, h);
-        // Asignamos siempre la instancia correcta
-        pg._renderer._pInst = p;
-        return pg;
-      };
-  
-      // 3) Creamos el canvas
-      const { canvasWidth: w, canvasHeight: h } = window.gridConfig;
-      p.createCanvas(w * scaleFactor, h * scaleFactor)
-       .parent(canvasWrapper);
-  
-      // No llamamos a noLoop(): queremos animación continua
-    };
-  
-    p.draw = () => {
-      // 0) Limpiar y escalar
-      p.clear();
-      p.push();
-      p.scale(scaleFactor);
-  
-      // 1) Dibuja rejilla (si la necesitas)
-      drawGrid(p);
-  
-      // 3) dibujar la seed ENCIMA
-      if (window.originalLayers) {
-        const prev = window.layers;
-        window.layers = window.originalLayers;
-        drawSeedInst(p, window.layers);
-        window.layers = prev;
-      } else {
-        p.background(200);
-        p.fill(0);
-        p.textAlign(p.CENTER, p.CENTER);
-        p.text('No original seed data',
-               canvasWidth / 2, canvasHeight / 2);
-      }
-  
-      // 4) salir del espacio escalado
-      p.pop();
-    };
-  });
-  
-  // GROWING SEED CANVAS
-  window.growingCtrl = new p5(p => {
-    const scaleFactor = 0.2;
-    const TEST_MODE   = true;    // 21s → 21d
-    let hasFrozenGrowth = false;
-    let w, h;
-  
-    // MediaRecorder vars
-    let recorder, recordedChunks = [];
-  
-    p.setup = () => {
-      p.frameRate(12);
-      w = window.gridConfig.canvasWidth;
-      h = window.gridConfig.canvasHeight;
-      p._gradientCache = {};
-  
-      // Patch para createGraphics
-      const _orig = p.createGraphics;
-      p.createGraphics = (gw, gh) => {
-        const pg = _orig.call(p, gw, gh);
-        pg._renderer._pInst = p;
-        return pg;
-      };
-  
-      // Canvas
-      p.createCanvas(w * scaleFactor, h * scaleFactor)
-       .parent(growingWrapper);
-  
-      // Inicia grabación a 1fps
-      const stream = p.canvas.captureStream(1);
-      recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-      recorder.ondataavailable = e => { if (e.data.size) recordedChunks.push(e.data); };
-      recorder.onstop = () => {
-        const blob = new Blob(recordedChunks, { type: 'video/webm' });
-        const url  = URL.createObjectURL(blob);
-        const a    = document.createElement('a');
-        a.href     = url;
-        a.download = 'growth.webm';
-        a.click();
-        URL.revokeObjectURL(url);
-      };
-      recorder.start(1000);  // chunk cada 1s
-    };
-  
-    p.draw = () => {
-      p.clear();
-      p.push();
-      p.scale(scaleFactor);
-      drawGrid(p);
-  
-      if (window.hasGrown && window.currentLayers?.length) {
-        // 1) rawT en [0,1]
-        const now       = Date.now();
-        const startMs   = new Date(window.growthConfig.startDate).getTime();
-        const elapsedMs = now - startMs;
-        const days      = window.growthConfig.days; // normalmente 21
-  
-        const rawT = TEST_MODE
-          ? Math.min(elapsedMs/1000/days, 1)
-          : Math.min(elapsedMs/(days*86400000), 1);
-  
-        // 2) Curva logística
-        const t = logisticEase(rawT, 12);
-  
-        // 3) Actualiza growthConfig mientras crece
-        if (!hasFrozenGrowth) {
-          const { sun = 0, water = 0, vitamins = 0 } = window.normGrowthConfig;
-          window.currentGrowthConfig = {
-            sun:      sun      * t,
-            water:    water    * t,
-            vitamins: vitamins * t
-          };
-          if (rawT >= 1) {
-            hasFrozenGrowth = true;
-            recorder.stop();  // detiene y descarga
-            console.log('🌳 Fully grown – simulación completada.');
-          }
+  draw = () => {
+    clear();
+    drawGrid();
+
+    if (window.hasGrown && window.currentLayers?.length) {
+      const now       = Date.now();
+      const startMs   = new Date(window.growthConfig.startDate).getTime();
+      const elapsedMs = now - startMs;
+      const days      = window.growthConfig.days;
+
+      const rawT = TEST_MODE
+        ? Math.min(elapsedMs / 1000 / days, 1)
+        : Math.min(elapsedMs / (days * 86400000), 1);
+
+      const t = logisticEase(rawT, 12);
+
+      if (!hasFrozenGrowth) {
+        const { sun = 0, water = 0, vitamins = 0 } = window.normGrowthConfig;
+        window.currentGrowthConfig = {
+          sun:      sun      * t,
+          water:    water    * t,
+          vitamins: vitamins * t
+        };
+        if (rawT >= 1) {
+          hasFrozenGrowth = true;
+          console.log('🌳 Fully grown – simulación completada.');
         }
-  
-        // 4) Dibuja el crecimiento
-        drawSeedGrowthInst(p, window.currentGrowthConfig, window.currentLayers);
       }
-  
-      // Indicador de fully grown
-      if (hasFrozenGrowth) {
-        p.push();
-        p.noStroke();
-        p.fill(255, 220);
-        p.textAlign(p.RIGHT, p.BOTTOM);
-        p.textSize(14);
-        p.text('✓ Fully grown', p.width - 10, p.height - 10);
-        p.pop();
-      }
-  
-      p.pop();
-    };
-  });
-  
-  
-  
+
+      drawSeedGrowthInst(window.currentGrowthConfig, window.currentLayers);
+    }
+
+    if (hasFrozenGrowth) {
+      noStroke();
+      fill(255, 220);
+      textAlign(RIGHT, BOTTOM);
+      textSize(14);
+      text('✓ Fully grown', width - 10, height - 10);
+    }
+  };
+
+  if (typeof setup === 'function') {
+    setup();
+  }
+
   return true;
 }
+
 //==================== THESE CALLS DRAW BOTH CANVAS ========================///
 
 // ========== MERGE LAYERS FOR GROWTH =========//
@@ -269,28 +203,25 @@ function mergeLayers(originalLayers, currentLayers) {
 
 // ========== DRAW GRID =========//
 // Draws grid lines with configurable color and opacity
-function drawGrid(p) {
-  //console.log('drawGrid');
-  const { rows, cols } = window.gridConfig;
-  const gridColor = window.gridConfig.gridColor || '#000000';
-  const gridOpacity = window.gridConfig.gridOpacity ?? 0.2;
-  const cellWidth = window.gridConfig.canvasWidth / cols;
-  const cellHeight = window.gridConfig.canvasHeight / rows;
+function drawGrid() {
+  const { rows, cols, canvasWidth, canvasHeight, gridColor = '#000000', gridOpacity = 0.2 } = window.gridConfig;
+  const cellWidth = canvasWidth / cols;
+  const cellHeight = canvasHeight / rows;
 
-  p.push();
-  p.stroke(gridColor);
-  p.drawingContext.globalAlpha = gridOpacity;
-  p.strokeWeight(1);
+  push();
+  stroke(gridColor);
+  drawingContext.globalAlpha = gridOpacity;
+  strokeWeight(1);
   for (let c = 0; c <= cols; c++) {
     const x = c * cellWidth;
-    p.line(x, 0, x, window.gridConfig.canvasHeight);
+    line(x, 0, x, canvasHeight);
   }
   for (let r = 0; r <= rows; r++) {
     const y = r * cellHeight;
-    p.line(0, y, window.gridConfig.canvasWidth, y);
+    line(0, y, canvasWidth, y);
   }
-  p.drawingContext.globalAlpha = 1;
-  p.pop();
+  drawingContext.globalAlpha = 1;
+  pop();
 }
 
 
@@ -299,7 +230,7 @@ async function fetchAndRenderSeed(seedId) {
   console.log('fetchAndRenderSeed called with seedId', seedId);
 
   const errorDiv     = document.getElementById('seedError');
-  const plantSummary = document.getElementById('harvest-summary');
+  const plantSummary = document.getElementById('plant-summary');
 
   if (!errorDiv || !plantSummary) {
     console.error('Missing required UI elements for seed');
@@ -320,18 +251,24 @@ async function fetchAndRenderSeed(seedId) {
     const data = docSnap.data();
 
     // Canvas + capas originales
-    window.gridConfig     = data.gridConfig || { rows: 2, cols: 2, canvasWidth: 400, canvasHeight: 300 };
+    window.gridConfig = data.gridConfig || { rows: 2, cols: 2, canvasWidth: 400, canvasHeight: 300 };
     window.originalLayers = data.originalLayers || [];
-    window.layers         = window.originalLayers;
-
-    // Inicializar canvas si no existe
-    if (!window.seedCtrl) {
-      if (!initializeCanvas(seedId)) throw new Error('Failed to initialize seed canvas');
+    window.layers = window.originalLayers;
+    
+    if (!canvas) {
+      initializeCanvas(seedId);
+    } else {
+      resizeCanvas(window.gridConfig.canvasWidth, window.gridConfig.canvasHeight);
     }
+    
 
     // Mostrar fecha de plantado
     const plantedAt = data.plantedAt?.toDate?.() || new Date();
     plantSummary.textContent = `Planted at: ${plantedAt.toLocaleString()}`;
+
+    // Call growth AFTER data load and canvas init
+    fetchAndRenderGrowth(seedId);
+    startGrowthPolling(seedId, 5000);
 
     console.log('✅ Seed data loaded correctly');
   } catch (err) {
@@ -365,11 +302,18 @@ function onLookup() {
   fetchAndRenderSeed(seedId);
 }
 
+
 // ========= Setup event listeners ========= //
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOMContentLoaded');
   const lookupBtn = document.getElementById('lookupBtn');
-  if (lookupBtn) lookupBtn.addEventListener('click', onLookup);
+if (lookupBtn) {
+  lookupBtn.addEventListener('click', (e) => {
+    e.preventDefault(); // 🔒 Detiene el refresh del formulario
+    onLookup();         // 🚀 Llama tu función de búsqueda
+  });
+}
+
 
   const urlParams = new URLSearchParams(window.location.search);
   const seedId = urlParams.get('seed');
@@ -410,49 +354,51 @@ window.addEventListener('unload', () => {
  * Dibuja gradientes y shapes en modo instancia, usando window.gridConfig (sin p.width)
  * Las claves de celdas son "row-col".
  */
-function drawSeedInst(p, isGrown = false, layers = null) {
+function drawSeedGrowthInst(growthConfig, layers = null) {
   const {
     rows,
     cols,
     canvasWidth,
     canvasHeight
-  } = window.gridConfig;       // ≤—— aquí ya está normalizado
+  } = window.gridConfig;
   const cellW = canvasWidth / cols;
   const cellH = canvasHeight / rows;
 
   const target = layers || window.layers;
   if (!Array.isArray(target) || target.length === 0) return;
 
-  const cache = p._gradientCache || (p._gradientCache = {});
+  const cache = window.gradientCache || (window.gradientCache = {});
 
   for (const layer of target) {
-    //console.log("🧱 layer.visuals:", layer.visuals);
     if (!layer.visuals) continue;
+
     for (const [cellKey, visual] of Object.entries(layer.visuals)) {
       const [r, c] = cellKey.split('-').map(Number);
       if (!Number.isInteger(r) || !Number.isInteger(c)) continue;
 
-      p.push();
-      p.translate(c * cellW, r * cellH);
+      push();
+      translate(c * cellW, r * cellH);
 
       if (visual.type === 'gradient' && Array.isArray(visual.colors)) {
         const key = `r${r}c${c}`;
         let pg = cache[key];
-        if (!pg) pg = cache[key] = p.createGraphics(cellW, cellH);
+        if (!pg) pg = cache[key] = createGraphics(cellW, cellH);
 
-        updateGradientBufferInst(p, pg, visual.colors, visual.offset || 0, p.frameCount);
-        p.image(pg, 0, 0);
+        const fc = animationsPaused ? pausedFrameCount : frameCount;
+        updateGradientBuffer(pg, visual.colors, visual.offset || 0, fc);
+        image(pg, 0, 0);
 
-        if (isGrown && visual.bloom) applyBloomExpansion(p, visual);
+        if (visual.bloom && growthConfig) {
+          applyBloomExpansion(null, visual); // null porque no pasamos instancia
+        }
 
       } else if (visual.type === 'shape' && visual.shape) {
         const s = visual.shape;
-        // normaliza size (0–1 → 0–100)
         let sizePct = s.size != null ? s.size : 1;
         if (sizePct <= 1) sizePct *= 100;
 
         drawShape(
-          p,
+          null,
           cellW, cellH,
           s.shapeType   || 'circle',
           s.fillColor   || '#ffffff',
@@ -462,10 +408,12 @@ function drawSeedInst(p, isGrown = false, layers = null) {
           layer.visuals
         );
 
-        if (isGrown && visual.bloom) applyBloomExpansion(p, visual);
+        if (visual.bloom && growthConfig) {
+          applyBloomExpansion(null, visual);
+        }
       }
 
-      p.pop();
+      pop();
     }
   }
 }

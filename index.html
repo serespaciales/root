@@ -6,7 +6,7 @@
   <title>root</title>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
 </head>
 <body>
 
@@ -42,15 +42,6 @@
   <button id="apply-canvas-size">Apply</button>
 </div>
 
-
-
-
-  <!-- Seed search & display -->
-  <div id="seed-search-ui">
-    <input type="text" id="seed-search-input" maxlength="7" size="7" />
-  </div>
-
-
   <!-- TIPPY -->
 
     <!-- CHOICES-->
@@ -67,6 +58,9 @@
       <div id="palette-tools-col">
         <div id="tools-title" class="tools-capsule popup-header draggable">root</div>
         <div id="palette-tools">
+          <button class="tool-btn" id="info-btn" data-tippy-content="Info & Help">
+            <img src="tool-icons/R_info-off.svg" alt="" />
+          </button>
           <button class="tool-btn" data-tool="grid" data-tippy-content="Edit grid">
             <img src="tool-icons/R_editgrid-on.svg" alt="" />
           </button>  
@@ -79,23 +73,14 @@
           <button class="tool-btn" data-tool="erase" data-tippy-content="Eraser">
             <img src="tool-icons/R_erase-off.svg" alt="" />
           </button>
-          <button class="tool-btn" data-tool="growth" data-tippy-content="Growth Settings">
-            <img src="tool-icons/R_growthset-off.svg" alt="" />
-          </button> 
           <button class="tool-btn" id="unify-btn" data-tippy-content="Unifier">
             <img src="tool-icons/R_unify-off.svg" alt="" />
           </button>
           <button class="tool-btn" id="editGridButton" data-tippy-content="Edit grid values">
             <img src="tool-icons/R_editgrid-off.svg" alt="" />
           </button>
-          <button class="tool-btn" id="seed-btn" data-tippy-content="Generate new seed">
-            <img src="tool-icons/R_genseed-off.svg" alt="" />
-          </button>
           <button class="tool-btn" data-tool="export" id="export-btn" data-tippy-content="Download Plant">
             <img src="tool-icons/R_export-off.svg" alt="" />
-          </button>
-          <button class="tool-btn" id="info-btn" data-tippy-content="Info & Help">
-            <img src="tool-icons/R_info-off.svg" alt="" />
           </button>    
         </div>
       </div>
@@ -167,14 +152,6 @@
             <label>Opacity <input type="range" id="gridOpacity" min="0" max="100" value="100"></label>
             <button id="editGridConfirm">Confirm Grid</button>
           </div>
-          <div class="tool-options" id="options-growth">
-            <label>Sun <input type="range" name="sun" min="0" max="10" value="1"></label>
-            <label>Water <input type="range" name="water" min="0" max="10" value="1"></label>
-            <label>Vitamins <input type="range" name="vitamins" min="0" max="10" value="1"></label>
-            <label>Days <input type="number" name="days" min="1" max="21" value="1"></label>
-            <button id="applyGrowthBtn">Apply Growth</button>
-            <button id="cloneSeedBtn" style="display: none;">Clone Seed</button>
-          </div> 
           </div><div class="tool-options" id="options-export">
             <label>Formato de descarga:</label>
             <select id="export-format">
@@ -199,6 +176,7 @@
         </div>
       </div>
     </div>
+  </div>
       <!-- scripts for help -->
     <script>
       window.addEventListener('DOMContentLoaded', () => {
@@ -209,20 +187,61 @@
         document.getElementById('options-default').style.display = 'block';
       });
     </script>
+<!-- 🔽 Bottom-right fixed button group -->
+<div id="bottom-buttons">
+
+  <!-- Pause Plant -->
+  <button class="tool-btn" id="pause-btn" data-tippy-content="Pause Plant">
+    <img src="tool-icons/R_stopanim.svg" alt="Pause Plant" />
+  </button>
+
+  <!-- Generate New Seed -->
+  <button class="tool-btn" id="seed-btn" data-tippy-content="Generate new seed">
+    <img src="tool-icons/R_genseed-off.svg" alt="Generate Seed" />
+  </button>
+
+  <!-- Growth Settings -->
+  <button class="tool-btn" id="growth-btn" data-tool="growth" data-tippy-content="Growth Settings">
+    <img src="tool-icons/R_growthset-off.svg" alt="Growth" />
+  </button>
   
+  <!-- Seed Search Input -->
+  <div id="seed-search-ui">
+    <input type="text" id="seed-search-input" maxlength="7" size="7" data-tippy-content="Seed" />
+  </div>  
+  
+</div>
+
+<!-- 🌱 Growth popup (outside of bottom-buttons container) -->
+<div id="growth-popup" class="popup popup-growth">
+  <div class="popup-header">
+    <div class="header-pill">Growth</div>
+    <button class="popup-close">×</button>
+  </div>
+  <div class="popup-content">
+    <div id="options-growth">
+      Sun <input type="range" name="sun" min="0" max="100" value="0"><br>
+      Water <input type="range" name="water" min="0" max="100" value="0"><br>
+      Vitamins <input type="range" name="vitamins" min="0" max="100" value="0"><br>
+      Days <input type="range" name="days" min="1" max="365" value="21"><br>
+      <button id="apply-growth">Apply Growth</button>
+      <button id="clone-seed">Clone Seed</button>
+    </div>
+  </div>
+</div>
 
     <!-- Info Popup -->
   <div id="info-popup" class="popup centered info-style">
     <div class="popup-header">
-      <div class="header-left">
-        <button class="popup-close">info×</button>
-        <button class="lang-btn" data-lang="shortcuts">shortcuts</button>
-      </div>
       <div class="lang-switch">
         <button class="lang-btn" data-lang="es">español</button>
         <button class="lang-btn" data-lang="en">english</button>
         <button class="lang-btn" data-lang="de">deutsch</button>
       </div>
+      <div class="header-left">
+        <button class="lang-btn" data-lang="shortcuts">shortcuts</button>
+        <button class="popup-close">info×</button> 
+      </div> 
     </div>
     <div class="popup-content info-text">
       <hr class="info-dividertop">
@@ -239,7 +258,7 @@
         </p>
 
         <p class="info-body">
-          root is free & open-source. Click <a href="https://github.com/anamariaa/modulariem" target="_blank">here</a> if you would like to contribute to the tool.
+          root is free & open-source. Click here if you would like to contribute to the tool.
         </p>
 
         <h3 class="info-section-title">How to Start</h3>
@@ -314,7 +333,7 @@
           </p>
         
           <p class="info-body">
-            root es libre y de código abierto. Haz clic <a href="https://github.com/anamariaa/modulariem" target="_blank">aquí</a> si deseas contribuir a la herramienta.
+            root es libre y de código abierto. Haz clic aquí si deseas contribuir a la herramienta. (github soon)
           </p>
         
           <h3 class="info-section-title">Cómo empezar</h3>
@@ -505,6 +524,7 @@
 <script src="sketch.js"></script>
 <script src="setupGrowth.js"></script>
 <script src="utils.js"></script> 
+<script src="https://unpkg.com/p5.fillgradient@0.1.2/dist/p5.fillGradient.min.js"></script>
  
 </body>
 </html>

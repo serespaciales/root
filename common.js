@@ -1,4 +1,4 @@
-const gradientCache = {};
+
 const DAY_IN_MINUTES = 1; // 1 day = 1 minute for debugging
 const firebaseConfig = {
   apiKey: "AIzaSyAN1_EbV_HesrVr2PUZEqwH5xkT23jNXko",
@@ -450,7 +450,8 @@ function drawAnimatedGradientInst(p) {
       const pg = _getCellBuffer(p, cache, row, col, cellW, cellH);
 
       // 2) actualizar gradiente
-      updateGradientBufferInst(p, pg, visual.colors, visual.offset, p.frameCount);
+      updateGradientBufferInst(visual.colors, visual.offset || 0, frameCount);
+
 
       // 3) dibujar buffer en posición correcta
       p.image(pg, col * cellW, row * cellH);

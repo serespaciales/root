@@ -142,7 +142,9 @@ canvas {
 }
 
 .icon-btn,
-.tool-btn {
+.tool-btn,
+.pause-btn,
+.bottom-btn {
   width: 30px;
   height: 30px;
   border-top-right-radius: 6px;
@@ -156,9 +158,28 @@ canvas {
   cursor: pointer;
 }
 
-.tool-btn.active {
-  background: rgb(60, 60, 60, 0.8);
-  color: rgb(237, 237, 237, 0.8);
+
+.tool-btn,
+.pause-btn,
+#growth-btn {
+  opacity: 0.2;
+  transition: opacity 0.5s ease;
+}
+
+.tool-btn.active,
+.pause-btn.active,
+#growth-btn.active {
+  opacity: 1 !important;
+  background: #d0fc76;
+  color: rgba(49, 49, 49, 0.8);
+}
+
+.tool-btn:hover,
+.pause-btn:hover
+#growth-btn:hover {
+  opacity: 1;
+  background: #d0fc76; /* Optional: match active state */
+  color: rgba(49, 49, 49, 0.8);
 }
 
 .fullscreen-btn {
@@ -170,7 +191,8 @@ canvas {
 
 
 /* === Pop-up Panels === */
-.popup {
+.popup
+ {
   position: fixed;
   top: 16px;
   left: 16px;
@@ -186,6 +208,8 @@ canvas {
   border-radius: 12;
   box-shadow: none;
 }
+
+
 
 /* HEADER */
 
@@ -217,7 +241,8 @@ canvas {
   font-size: clamp(8px, 1.5vw, 16px);
   overflow-y: auto;
   max-height: 70vh;
-  border-top-right-radius: 12px;
+  border-radius: 0;
+  border-bottom-right-radius: 12px;
   border-bottom-left-radius: 12px;
   display: block;
   flex-direction: column;
@@ -306,6 +331,7 @@ body.hide-ui .popup {
   background: rgba(49, 49, 49);
   color:  rgba(203, 196, 194, 0.9);
   border: 1px solid rgba(60, 60, 60, 0.8);
+  
   font-size: clamp(40px, 13vw, 180px); /* Si el pop-up se achica, el título nunca será menos de 40px */ 
   padding-left: 0;
   padding-top: 15px;
@@ -511,27 +537,29 @@ body.hide-ui .popup {
 
 /* === Tippy.js custom theme: modulariem === */
 .tippy-box[data-theme~='modulariem'] {
-  background-color: rgba(203, 196, 194); /* gris claro */
-  color: rgb(74, 67, 61);                /* texto gris oscuro */
-  border: 1px solid rgb(74, 67, 61);     /* borde gris oscuro */
-  font-family: monospace;
-  font-size: clamp(8px, 1.5vw, 16px);
-  border-radius: 12px;
+  background-color: rgb(245, 245, 245); /* gris claro */
+  color: rgba(49, 49, 49, 0.8);                /* texto gris oscuro */
+  border: 1px solid rgba(49, 49, 49, 0.8);     /* borde gris oscuro */
+  font-family: "JetBrains Mono";
+  font-size: clamp(8px, 1.5vw, 14px);
+  border-radius: 0px;
+  border-top-left-radius: 12px;
+  border-bottom-right-radius: 12px;
   box-shadow: none;
 }
 
 /* Cambia el color de la flechita según la posición del tooltip */
 .tippy-box[data-theme~='modulariem'][data-placement^='top'] > .tippy-arrow::before {
-  border-top-color: rgb(74, 67, 61); 
+  border-top-color: rgba(49, 49, 49, 0.8)
 }
 .tippy-box[data-theme~='modulariem'][data-placement^='bottom'] > .tippy-arrow::before {
-  border-bottom-color: rgb(74, 67, 61); 
+  border-bottom-color: rgba(49, 49, 49, 0.8)
 }
 .tippy-box[data-theme~='modulariem'][data-placement^='left'] > .tippy-arrow::before {
-  border-left-color: rgb(74, 67, 61); 
+  border-left-color: rgba(49, 49, 49, 0.8)
 }
 .tippy-box[data-theme~='modulariem'][data-placement^='right'] > .tippy-arrow::before {
-  border-right-color: rgb(74, 67, 61); 
+  border-right-color: rgba(49, 49, 49, 0.8)
 }
 
 /* === LAYERS === */
@@ -545,14 +573,16 @@ body.hide-ui .popup {
   gap: 12px;
 }
 
-.popup-close {
-  background: rgb(74, 67, 61);     /* Fondo oscuro SIEMPRE */
+.popup-close button {
+  background: rgba(49, 49, 49, 0.8);     /* Fondo oscuro SIEMPRE */
   border: none;
   color: rgba(203, 196, 194);       /* Texto claro */
   font-family: 'JetBrains Mono', monospace;
   font-size: clamp(8px, 1.5vw, 16px);
+  border-radius: 0 !important;
+  border-top-left-radius: 12px !important;
+  border-bottom-right-radius: 12px !important;
   padding: 3px 14px 3px 14px;
-  border-radius: 0px 12px 0 0;
   cursor: pointer;
   font-weight: lighter;
   min-width: 0;
@@ -564,9 +594,8 @@ body.hide-ui .popup {
 
 /* Unifica el estilo de todos los botones */
 .popup-header button,
-.lang-btn,
 .popup-shortcuts {
-  background: rgb(74, 67, 61);     /* Fondo oscuro SIEMPRE */
+  background: rgba(49, 49, 49, 0.8);     /* Fondo oscuro SIEMPRE */
   border: none;
   color:rgba(203, 196, 194);      /* Texto claro */
   font-family: 'JetBrains Mono', monospace;
@@ -581,6 +610,11 @@ body.hide-ui .popup {
   box-sizing: border-box;
   display: inline-block;
   height: auto;
+}
+.lang-btn{
+  border-radius: 0px !important;
+  border-top-left-radius: 12px !important;
+  border-bottom-right-radius: 12px !important;
 }
 
 #palette-header {
@@ -598,24 +632,11 @@ body.hide-ui .popup {
   padding: 6px 18px 0 18px;
 }
 
-.popup-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: transparent;    /* Fondo oscuro SIEMPRE */
-  color: rgba(203, 196, 194);
-  border-top-right-radius: 18px;
-  font-size: clamp(8px, 1.5vw, 16px);
-  width: 100%;
-  padding: 6px 18px 0 18px;
-}
-
-
 .popup-header button:hover,
 .lang-btn:hover,
 .lang-btn.active {
   background: #d0fc76;        /* Verde claro en hover */
-  color: rgb(74, 67, 61);     /* Texto oscuro */
+  color: rgba(49, 49, 49, 0.8);      /* Texto oscuro */
 }
 
 
@@ -689,7 +710,7 @@ body.hide-ui .popup {
 .header-pill,
 .tools-capsule,
 #tools-title {
-  background: rgb(74, 67, 61);
+  background: rgba(49, 49, 49, 0.8); 
   color:  rgb(203, 196, 194);
   font-size: clamp(8px, 1.5vw, 16px);
   display: flex;
@@ -708,7 +729,7 @@ body.hide-ui .popup {
 }
 
   .header-pill{
-    row-gap: 40px;
+    row-gap: 100px;
 
   }
 
@@ -737,7 +758,6 @@ body.hide-ui .popup {
   align-items: flex-start;
   max-width: 100%;
   margin: 10px;
-  margin-bottom: 5px;
 }
 
 #layer-panel{
@@ -784,25 +804,21 @@ body.hide-ui .popup {
 /* UI FOR THE SEED BAR */ /* UI FOR THE SEED BAR */ /* UI FOR THE SEED BAR */
 
 /* ── Seed search & display ── */
-#seed-search-ui {
-  position: fixed;
-  bottom: 12px;
-  right: 12px;
-  z-index: 9999;                /* por encima del canvas */
-  font-family: 'JetBrains Mono', monospace;
-}
+
 #seed-search-input {
   width: auto;
+  height: 30px;
   padding: 4px 8px;
   background: #fff;
-  color: #000;
-  border: 1px solid #000;
-  border-top-right-radius: 12px;
-  border-bottom-left-radius: 12px;
+  color: rgb(49, 49, 49);
+  border: 1px solid  rgb(49, 49, 49);
+  border-top-right-radius: 6px;
+  border-bottom-left-radius: 6px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 1rem;
   text-align: center;
 }
+
 
 /* Input semilla casi transparente y full opacity on hover/focus */
 #seed-search-input {
@@ -831,19 +847,8 @@ body.hide-ui .popup {
 
 /* TOOLS HELPER */ /* TOOLS HELPER */ /* TOOLS HELPER */ /* TOOLS HELPER */ /* TOOLS HELPER */ 
 
-/* ANIMATION PAUSE */ /* ANIMATION PAUSE */ /* ANIMATION PAUSE */ /* ANIMATION PAUSE */ /* ANIMATION PAUSE */
-.pause-btn {
-  position: fixed;
-  bottom: 12px;
-  left: 12px;
-  z-index: 9999;
-  background: white;
-  border: 1px solid #000;
-  border-top-right-radius: 12px;
-  border-bottom-left-radius: 12px;
-  padding: 6px;
-  cursor: pointer;
-}
+/* BUTTONS POSITION */ /* BUTTONS POSITION */ /* BUTTONS POSITION */ /* BUTTONS POSITION */ 
+
 
 .pause-btn img {
   width: 16px;
@@ -856,19 +861,9 @@ width: 16px;
 height: 16px;
 }
 
-.pause-btn {
-  opacity: 0.2;                      /* muy baja por defecto */
-  transition: opacity 0.25s ease;    /* transición suave */
-}
-
-.pause-btn:hover,
-.pause-btn:focus {
-  opacity: 1;                        /* full opacity al pasar el ratón o hacer focus */
-}
 
 
-/* ANIMATION PAUSE */ /* ANIMATION PAUSE */ /* ANIMATION PAUSE */ /* ANIMATION PAUSE */ /* ANIMATION PAUSE */
-
+/* BUTTONS POSITION *//* BUTTONS POSITION *//* BUTTONS POSITION *//* BUTTONS POSITION *//* BUTTONS POSITION */
 
 #manual-resize-controls {
   position: absolute;
@@ -879,4 +874,25 @@ height: 16px;
   padding: 6px;
   border-radius: 4px;
   z-index: 999;
+}
+
+/* === Growth‑only widget === */ /* === Growth‑only widget === */ /* === Growth‑only widget === */ /* === Growth‑only widget === */
+
+
+.popup-growth {
+  position:relative;
+  z-index: 1000;
+}
+
+
+
+#bottom-buttons {
+  position: fixed !important ;
+  right: 12px !important ;
+  bottom: 12px !important ;
+  display: flex !important ;
+  flex-direction: row !important ;
+  gap: 10px !important ;
+  z-index: 9999 !important ;
+  align-items: flex-end !important ; /* para alinear el input a la derecha también */
 }

@@ -1,4 +1,5 @@
 
+const MODE = document.body.dataset.mode || 'edit';
 const DAY_IN_MINUTES = 1; // 1 day = 1 minute for debugging
 const firebaseConfig = {
   apiKey: "AIzaSyAN1_EbV_HesrVr2PUZEqwH5xkT23jNXko",
@@ -8,6 +9,9 @@ const firebaseConfig = {
   messagingSenderId: "414106332565",
   appId: "1:414106332565:web:54bd602fe0657f25435a9c"
 };
+let animationsPaused = false; //PAUSAR EL CRECIMIENTO GLOBAL, AYUDA CON EL LAG !!!
+
+
 
 function initializeFirebase(retries = 3, delay = 1000) {
   if (typeof firebase === 'undefined') {
@@ -119,7 +123,13 @@ window.loadSeed = function(data) {
               opacity:     visualObj.shape?.opacity     || 1,
               extrudePct:  visualObj.shape?.extrudePct  || 0,
               subdivisions:visualObj.shape?.subdivisions|| 0,
-              tint:        visualObj.shape?.tint        || null
+              tint:        visualObj.shape?.tint        || null,
+              breathAmplitude: typeof visualObj.shape?.breathAmplitude === 'number'
+                    ? visualObj.shape.breathAmplitude : 0,
+              breathSpeed:     typeof visualObj.shape?.breathSpeed     === 'number'
+                    ? visualObj.shape.breathSpeed     : 0,
+              breathPhase:     typeof visualObj.shape?.breathPhase     === 'number'
+                    ? visualObj.shape.breathPhase     : 0
             },
             text:     visualObj.text     || { extrude: 0, branches: 0, hue: 0, content: "" },
             speckles: visualObj.speckles || { pct: 0, radius: 0 }
@@ -171,7 +181,7 @@ window.loadSeed = function(data) {
 window.drawSeed = function(p, isGrowing = false) {
   console.log('Drawing seed, frameCount:', p.frameCount, 'isGrowing:', isGrowing, 'layers:', window.layers);
   p.clear();
-  p.background(255, 255, 255, 0); // Transparent background
+  p.background(255, 255, 255, 20); // Transparent background
 
   // Validate data
   if (!window.layers || !Array.isArray(window.layers) || !window.gridConfig) {
@@ -250,15 +260,22 @@ window.drawSeed = function(p, isGrowing = false) {
             if (isGrowing && visual.speckles.pct) applyMossMirage(p, visual, w, h);
           }
           else if (visual.type === "shape" && visual.shape) {
-            console.log(`Rendering shape at ${key}:`, visual.shape);
-            const s = visual.shape;
+            const w0 = w;   // ancho de la celda (o múltiplos)
+            const h0 = h;   // alto de la celda
+            const s  = visual.shape;
             p.push();
-              p.noFill();
-              p.stroke(s.strokeColor);
-              p.strokeWeight(s.size);
-              p.ellipse(w/2, h/2, s.size * Math.min(w, h));
+              // NO vuelvas a traducir aquí: ya estás en (x, y)
+              drawShape(
+                w0, h0,
+                   s.shapeType,
+                   s.fillColor,
+                   s.strokeColor,
+                 s.size,
+                   s.breathAmplitude,
+                   s.breathSpeed,
+                   s.rotationSpeed
+                 );
             p.pop();
-            if (isGrowing && visual.bloom) applyBloom(p, visual.bloom);
           }
           else if (visual.type === "text" && visual.text.content) {
             // implement text rendering...
@@ -287,343 +304,13 @@ function addSpeckles(p, w, h, pct, radius, tint) {
   }
 }
 
-function subdivideShape(p, subdivisions) {
-  p.scale(1 + subdivisions * 0.1); // Basic implementation
-}
-//===========GRADIENT AND HELPERS AND SO ON =======================
-// --- Dibujar los contenidos visuales por celda ---
-// ——————— Helpers ———————
-
-// Crea un gradiente vertical en un p5.Graphics (usado para performance)
-//there are two functions doing almost similar things, but one is for seeds on demand, and one is for visuals, specially optimized for performance 
-
-function drawAnimatedGradient(p) {
-  const cache = window.gradientCache || (window.gradientCache = {});
-
-  const {
-    rows, cols,
-    canvasWidth = w,
-    canvasHeight = h
-  } = window.gridConfig;
-
-  const cellWidth = canvasWidth / cols;
-  const cellHeight = canvasHeight / rows;
-
-  for (const visual of window.layers || []) {
-    if (visual.type !== 'gradient') continue;
-
-    const { col, row, colors = [], offset = 0 } = visual;
-    const key = `r${row}c${col}`;
-
-    if (cellWidth <= 0 || cellHeight <= 0) {
-      console.warn(`Invalid size for gradient buffer: ${cellWidth}x${cellHeight} at ${key}`);
-      continue;
-    }
-
-    if (!cache[key]) {
-      cache[key] = p.createGraphics(cellWidth, cellHeight);
-    }
-
-    const pg = cache[key];
-
-    updateGradientBuffer(pg, colors, offset, p.frameCount); // Esta debe estar definida
-
-    const x = col * cellWidth;
-    const y = row * cellHeight;
-
-    p.image(pg, x, y);
-  }
-}
-
-
-function updateGradientBuffer(pg, colors, offset, frameCountOverride) {
-  const steps = pg.height;
-  pg.noStroke();
-  pg.clear();
-
-  const fc = animationsPaused
-  ? pausedFrameCount  // ✅ congelado en el frame real donde pausaste
-  : (frameCountOverride !== undefined
-      ? frameCountOverride
-      : (typeof frameCount !== "undefined" ? frameCount : 0));
-
-
-  // Detectar si estamos en modo instancia
-  const p = pg._renderer._pInst || null;
-
-  // Funciones compatibles con modo global e instancia
-  const _color = p ? p.color.bind(p) : color;
-  const _lerpColor = p ? p.lerpColor.bind(p) : lerpColor;
-
-  for (let i = 0; i < steps; i++) {
-    const t = i / steps;
-    const tt = (t + offset + fc * 0.01) % 1;
-
-    const colr = (colors.length === 3)
-      ? (tt < 0.5
-          ? _lerpColor(_color(colors[0]), _color(colors[1]), tt * 2)
-          : _lerpColor(_color(colors[1]), _color(colors[2]), (tt - 0.5) * 2))
-      : _lerpColor(_color(colors[0]), _color(colors[1] || "#000000"), tt);
-
-    pg.stroke(colr);
-    pg.line(0, i, pg.width, i);
-  }
+function subdivideShape(subdivisions) {
+  scale(1 + subdivisions * 0.1);
 }
 
 
 
-function updateGlobalGradient(colors, offset = 0) {
-  const steps = gradientBuffer.height;
 
-  gradientBuffer.noStroke();
-  gradientBuffer.clear();
-
-  for (let i = 0; i < steps; i++) {
-    const t = i / steps;
-    const tt = (t + offset + frameCount * 0.01) % 1;
-
-    const colr = (colors.length === 3)
-      ? (tt < 0.5
-          ? lerpColor(color(colors[0]), color(colors[1]), tt * 2)
-          : lerpColor(color(colors[1]), color(colors[2]), (tt - 0.5) * 2))
-      : lerpColor(color(colors[0]), color(colors[1] || "#000000"), tt);
-
-    gradientBuffer.stroke(colr);
-    gradientBuffer.line(0, i, gradientBuffer.width, i);
-  }
-
-
-  function drawGradient(p, gradient) {
-    const { colors, direction = 0, scale = 1, distortion = 0, offset = 0 } = gradient;
-    const w = p.width;
-    const h = p.height;
-  
-    p.push();
-    p.translate(w / 2, h / 2 + offset);
-    p.rotate(p.radians(direction));
-    p.scale(scale);
-  
-    const grad = p.drawingContext.createLinearGradient(-w / 2, 0, w / 2, 0);
-    const step = 1 / (colors.length - 1);
-    colors.forEach((color, i) => {
-      grad.addColorStop(i * step, color);
-    });
-  
-    p.drawingContext.fillStyle = grad;
-    const dx = distortion * 10;
-    const dy = distortion * 10;
-    p.rect(-w / 2 + dx, -h / 2 + dy, w - 2 * dx, h - 2 * dy);
-    p.pop();
-  }
-  
-}
-
-// 3) Recorre window.layers y pinta TODOS los gradients en su celda
-function drawAnimatedGradientInst(p) {
-  // Cache local a la instancia
-  const cache = p._gradientCache || (p._gradientCache = {});
-
-  // Extrae configuración de grid
-  const {
-    rows,
-    cols,
-    canvasWidth  = window.gridConfig.canvasWidth,
-    canvasHeight = window.gridConfig.canvasHeight
-  } = window.gridConfig;
-
-  const cellW = canvasWidth  / cols;
-  const cellH = canvasHeight / rows;
-
-  // Por cada capa
-  for (const layer of window.layers || []) {
-    // Por cada visual dentro de la capa
-    for (const [cellKey, visual] of Object.entries(layer.visuals || {})) {
-      if (visual.type !== 'gradient') continue;
-
-      // Tus claves vienen en "fila-columna"
-      const [row, col] = cellKey.split('-').map(Number);
-
-      // Validación mínima
-      if (!(row >= 0 && col >= 0 && cellW > 0 && cellH > 0)) continue;
-
-      // 1) obtener/crear buffer
-      const pg = _getCellBuffer(p, cache, row, col, cellW, cellH);
-
-      // 2) actualizar gradiente
-      updateGradientBufferInst(visual.colors, visual.offset || 0, frameCount);
-
-
-      // 3) dibujar buffer en posición correcta
-      p.image(pg, col * cellW, row * cellH);
-    }
-  }
-}
-
-
-
-//===========GRADIENT AND HELPERS AND SO ON =======================
-
-
-//===========SHAPE AND HELPERS AND SO ON =======================
-
-
-function drawShape(p, w, h, shapeType = "circle", fillColor = '#ffffff', strokeColor = '#ffffff', size = 100, r = 0, c = 0, visuals = {}) {
-  const scale = p.constrain(size / 100, 0, 1);
-  const baseR = p.min(w, h) * 0.5 * scale;
-  const rotationRad = 0;
-
-  const self = visuals[`${r}-${c}`]?.shape;
-  if (!self) {
-    console.warn(`No shape data at ${r}-${c}`);
-    return;
-  }
-
-  //BREATHING LOGIC FOR SHAPES
-
-  // --- Calcular factor “breathing” ---
-  const t = p.millis() / 1000; // tiempo en segundos
-  const amp   = self.breathAmplitude  || 0;    // cuánto escala (ej 0.1 = ±10%)
-  const freq  = self.breathSpeed      || 1;    // pulsaciones por segundo
-  const phase = self.breathPhase      || 0; 
-  const breatheFactor = 1 + amp * p.sin(p.TWO_PI * freq * t + phase);
-
-  // recalcula el radio base con ese factor
-  const rScaled = baseR * breatheFactor;
-
-
-  function isConnectedWith(r2, c2) {
-    const neighbor = visuals[`${r2}-${c2}`]?.shape;
-    return neighbor && neighbor.shapeType === shapeType;
-  }
-
-  const neighbors = {
-    top:    isConnectedWith(r - 1, c),
-    right:  isConnectedWith(r, c + 1),
-    bottom: isConnectedWith(r + 1, c),
-    left:   isConnectedWith(r, c - 1)
-  };
-
-  p.push();
-  p.translate(w / 2, h / 2);
-  p.rotate(rotationRad);
-
-  if (shapeType === "circle") {
-    drawCircleConnected(p, w, h, rScaled, neighbors, fillColor, strokeColor);
-  } else if (shapeType === "square") {
-    drawSquareConnected(p, w, h, rScaled, neighbors, fillColor, strokeColor);
-  } else if (shapeType === "star") {
-    drawStarConnected(p, w, h, rScaled, neighbors, fillColor, strokeColor, 5);
-  } else if (shapeType === "organic") {
-    drawOrganicConnected(p, w, h, rScaled, neighbors, fillColor, strokeColor);
-  } else {
-    console.warn(`Invalid shapeType: ${shapeType}`);
-  }
-
-  p.pop();
-}
-
-function drawCircleConnected(p, w, h, r, neighbors, fillColor, strokeColor) {
-  const steps = 80;
-  p.fill(fillColor);
-  p.stroke(strokeColor);
-  p.strokeWeight(1);
-  p.beginShape();
-
-  for (let i = 0; i <= steps; i++) {
-    const angle = p.map(i, 0, steps, 0, p.TWO_PI);
-    let x = p.cos(angle) * r;
-    let y = p.sin(angle) * r;
-
-    if (neighbors.top && y < -r * 0.95) y = -h / 2;
-    if (neighbors.bottom && y > r * 0.95) y = h / 2;
-    if (neighbors.left && x < -r * 0.95) x = -w / 2;
-    if (neighbors.right && x > r * 0.95) x = w / 2;
-
-    p.vertex(x, y);
-  }
-
-  p.endShape(p.CLOSE);
-}
-
-function smoothEdge(p, angle, targetDeg, width = 30) {
-  const diff = p.abs(p.degrees(angle) - targetDeg);
-  if (diff > width) return 0;
-  return p.cos(p.map(diff, 0, width, 0, p.PI)) * 0.5 + 0.5;
-}
-
-function drawOrganicConnected(p, w, h, r, neighbors, fillColor, strokeColor) {
-  p.fill(fillColor);
-  p.stroke(strokeColor);
-  p.strokeWeight(1);
-
-  const steps = 100;
-  const noiseFreq = 1.2;
-  const noiseAmp = r * 0.6;
-  const time = p.frameCount * 0.005;
-
-  p.beginShape();
-  for (let i = 0; i <= steps; i++) {
-    const angle = p.map(i, 0, steps, 0, p.TWO_PI);
-    const x0 = p.cos(angle);
-    const y0 = p.sin(angle);
-    const n = p.noise(x0 * noiseFreq + 10, y0 * noiseFreq + 10, time);
-    let base = r + (n - 0.5) * noiseAmp;
-
-    let connectAmount = 0;
-    if (neighbors.top) connectAmount += smoothEdge(p, angle, 270);
-    if (neighbors.right) connectAmount += smoothEdge(p, angle, 0);
-    if (neighbors.bottom) connectAmount += smoothEdge(p, angle, 90);
-    if (neighbors.left) connectAmount += smoothEdge(p, angle, 180);
-
-    base += connectAmount * r * 1.2;
-
-    const x = x0 * base;
-    const y = y0 * base;
-    p.vertex(x, y);
-  }
-  p.endShape(p.CLOSE);
-}
-
-function drawSquareConnected(p, w, h, r, neighbors, fillColor, strokeColor) {
-  const stepsPerSide = 20;
-  const steps = stepsPerSide * 4;
-  p.fill(fillColor);
-  p.stroke(strokeColor);
-  p.strokeWeight(1);
-  p.beginShape();
-
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    let x, y;
-
-    if (t <= 0.25) {
-      x = p.lerp(-r, r, t * 4);
-      y = -r;
-      if (neighbors.top && p.abs(x) < r * 0.5) y = -h / 2;
-    } else if (t <= 0.5) {
-      x = r;
-      y = p.lerp(-r, r, (t - 0.25) * 4);
-      if (neighbors.right && p.abs(y) < r * 0.5) x = w / 2;
-    } else if (t <= 0.75) {
-      x = p.lerp(r, -r, (t - 0.5) * 4);
-      y = r;
-      if (neighbors.bottom && p.abs(x) < r * 0.5) y = h / 2;
-    } else {
-      x = -r;
-      y = p.lerp(r, -r, (t - 0.75) * 4);
-      if (neighbors.left && p.abs(y) < r * 0.5) x = -w / 2;
-    }
-
-    p.vertex(x, y);
-  }
-
-  p.endShape(p.CLOSE);
-}
-
-//===========SHAPE AND HELPERS AND SO ON =======================
-
-
-//===========GRID  =======================
 
 function drawGrid(p, rows, cols, cellWidth, cellHeight) {
   p.noFill();
@@ -641,46 +328,98 @@ function drawGrid(p, rows, cols, cellWidth, cellHeight) {
   }
 }
 
-//===========GRID  =======================
-
-
-
-//DISABLE UI AFTER GROWTH 
-
-function disableEditingControls() {
-  // Disable tool buttons
-  document.querySelectorAll('.tool-btn').forEach(btn => {
-    btn.disabled = true;
-    btn.style.opacity = '0.5';
-  });
-  // Disable sliders
-  document.querySelectorAll('input[type="range"]').forEach(slider => {
-    slider.disabled = true;
-  });
-  // Disable canvas interactions
-  if (canvas) {
-    canvas.elt.style.pointerEvents = 'none';
-  }
-  // Disable layer controls
-  document.querySelectorAll('.layer-entry input, .layer-entry button').forEach(el => {
-    el.disabled = true;
-  });
-  // Show locked message
-  const palette = document.getElementById('palette');
-  if (palette) {
-    const lockedMsg = document.createElement('div');
-    lockedMsg.id = 'locked-message';
-    lockedMsg.style.color = 'red';
-    lockedMsg.style.padding = '10px';
-    lockedMsg.textContent = 'This seed is locked for growth. Duplicate it to edit.';
-    palette.appendChild(lockedMsg);
-  }
-}
-
-
-//DISABLE UI AFTER GROWTH 
-
-
 //=========================COLOR HELPERS================================
 
 
+
+function drawShape(
+  w, h,
+  shapeType     = "circle",
+  fillColor     = '#000',
+  strokeColor   = '#fff',
+  size          = 100,
+  subdivisions  = 5,
+  breathPhase   = 0,      // <-- valor por defecto
+  breathAmp     = 0.3,
+  breathSpeed   = 0.5,
+  rotationSpeed = 0.1
+) {
+
+  const baseSize = constrain(size / 100, 0, 1);
+  const amp      = constrain(breathAmp, 0, 1);
+  const freq     = constrain(breathSpeed, 0.1, 10);
+  const rotSpd   = rotationSpeed;
+  const t        = animationsPaused ? pausedMillis/1000 : millis()/1000;
+
+  push();
+  translate(w/2, h/2);
+  drawingContext.save();
+  drawingContext.beginPath();
+  drawingContext.rect(-w/2, -h/2, w, h);
+  drawingContext.clip();
+  rotate(t * rotSpd);
+
+  // Asegúrate de tener un entero
+  const rings = floor(subdivisions);
+  for (let i = 0; i < rings; i++) {
+     const phase = sin(TWO_PI * freq * t + i * 0.3 + breathPhase);
+    const maxD  = baseSize * max(w, h) * (1 - i * 0.1);
+    const dia   = map(phase, -1, 1, 0, maxD * 1.5);
+    if (dia <= 0) continue;
+
+    if (i % 2 === 0) {
+      fill( color(fillColor) );
+    } else {
+      fill( color(strokeColor) );
+    }
+    noStroke();
+    ellipse(0, 0, dia, dia);
+  }
+
+  drawingContext.restore();
+  pop();
+}
+
+function setupToolLogic() {
+  if (MODE !== 'edit') {
+    console.log('this is is an editing function');
+    return;
+  }
+  const buttons = document.querySelectorAll('.tool-btn:not(#growth-btn)');
+
+  const toolNames = {
+    gradient: "Gradient",
+    shape: "Shape",
+    text: "Text",
+    image: "Image",
+    texture: "Texture",
+    grid: "Grid",
+    layers: "Layers",
+    erase: "Erase",
+    color: "Color"
+  };
+
+  buttons.forEach(btn => {
+    btn.addEventListener('click', e => {
+      const sel = btn.dataset.tool;
+      if (!sel || sel === 'growth') return;
+
+      activeTool = sel;
+      buttons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      // Ocultar todos los paneles
+      document.querySelectorAll('.tool-options').forEach(opt => {
+        opt.style.display = 'none';
+      });
+
+      // Mostrar el correspondiente
+      const panel = document.getElementById(`options-${sel}`);
+      if (panel) panel.style.display = 'flex';
+
+      // Actualizar título
+      const title = document.getElementById("properties-title");
+      title.textContent = toolNames[sel] || "Tool Properties";
+    });
+  });
+}

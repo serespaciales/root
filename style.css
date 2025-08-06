@@ -33,13 +33,14 @@ html, body {
 
 /* Tamaño del campo desplegado */
 .choices__inner {
-  background-color: rgb(245, 245, 0);
+  background-color: rgb(255, 251, 30);
   font-family: monospace;
   min-height: 28px !important;
   padding: 4px 8px !important;
   font-size: 16px !important;
   line-height: 1.2;
 }
+
 
 .choices__item {
   font-family: monospace;
@@ -62,9 +63,6 @@ html, body {
   background-color: #fff;
 }
 
-canvas {
-  pointer-events: none;
-}
 
 .canvas-dragger {
   position: absolute;
@@ -101,6 +99,11 @@ canvas {
 }
 
 canvas {
+  user-select: none;
+  -webkit-user-select: none; /* For Safari/Chrome */
+  -moz-user-select: none;    /* For Firefox */
+  -ms-user-select: none;     /* For IE/Edge */
+  pointer-events: none;
   display: block;
   width: 100%;
   height: 100%;
@@ -150,8 +153,21 @@ canvas {
   border-top-right-radius: 6px;
   border-bottom-left-radius: 6px;
   background-color: rgb(237, 237, 237);
-  border: 1px solid  rgb(49, 49, 49);
+  border: 1px solid  rgb(49, 49, 49) !important;
   color: rgb(237, 237, 237);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+#growth-btn {
+  width: 30px !important;
+  height: 30px !important;
+  border-top-right-radius: 6px !important;
+  border-bottom-left-radius: 6px !important;
+  background-color: rgb(237, 237, 237) !important;
+  color: rgb(237, 237, 237) !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -163,22 +179,22 @@ canvas {
 .pause-btn,
 #growth-btn {
   opacity: 0.2;
-  transition: opacity 0.5s ease;
+  transition: opacity 0.3s ease;
 }
 
 .tool-btn.active,
 .pause-btn.active,
 #growth-btn.active {
   opacity: 1 !important;
-  background: #d0fc76;
+  background: rgb(255, 251, 30);
   color: rgba(49, 49, 49, 0.8);
 }
 
 .tool-btn:hover,
-.pause-btn:hover
+.pause-btn:hover,
 #growth-btn:hover {
   opacity: 1;
-  background: #d0fc76; /* Optional: match active state */
+  background: rgb(255, 251, 30) !important;
   color: rgba(49, 49, 49, 0.8);
 }
 
@@ -219,17 +235,17 @@ canvas {
   justify-content: space-between;
   align-items: center;
   background: transparent;    /* Fondo oscuro SIEMPRE */
-  color: rgba(203, 196, 194);
+  margin-bottom: 8px;
+  color: rgb(255, 251, 30);
   border-top-right-radius: 18px;
   font-size: clamp(8px, 1.5vw, 16px);
   width: 100%;
+  cursor: grab;
+  pointer-events: all;
 }
 
 
 
-.popup .popup-close:hover {
-  transform: scale(1.1);
-}
 
 /* CONTENIDO  & TEXTO */
 /*text pop up */
@@ -255,21 +271,25 @@ canvas {
   display: flex;
   flex-direction: column !important;
   font-size: clamp(8px, 1.5vw, 16px);
-  color: rgb(74, 67, 61);
+  color: rgb(49, 49, 49);
   gap: 4px;
 }
 
 
 
 /* === Hide UI === */
+/* === Hide UI === */
 body.hide-ui #palette,
 body.hide-ui #main-actions,
 body.hide-ui #tool-actions,
-body.hide-ui .popup {
+body.hide-ui .popup,
+body.hide-ui #bottom-buttons,
+body.hide-ui .fullscreen-btn,
+body.hide-ui .resizer.top-right {
   display: none !important;
 }
 
-.hidden {
+#bottom-buttons.hidden {
   display: none !important;
 }
 
@@ -279,7 +299,7 @@ body.hide-ui .popup {
 
 .info-style {
   font-family: monospace;
-  background-color: rgba(203, 196, 194, 0.8);
+  background-color: rgb(255, 251, 30, 0.8);
   color: rgb(60, 60, 60, 0.8);
   max-width: 95vw;      /* ← NUNCA más ancho que pantalla */
   width:max-content;
@@ -302,7 +322,7 @@ body.hide-ui .popup {
 
 
 
-.info-style .popup-header {
+ .popup-header {
   font-weight: lighter;
   display: flex;
   width: 100%;
@@ -310,9 +330,10 @@ body.hide-ui .popup {
 }
 
 
-.info-style .shortcuts{
+.shortcuts{
   background: none;
   border: none;
+  display: flex;
   font-weight: lighter;
   font-family: monospace;
   font-size: clamp(8px, 1.5vw, 16px);
@@ -328,8 +349,8 @@ body.hide-ui .popup {
 }
 
 .info-text .info-title {
-  background: rgba(49, 49, 49);
-  color:  rgba(203, 196, 194, 0.9);
+  background: rgb(255, 251, 30);
+  color:  rgba(49,49,49);
   border: 1px solid rgba(60, 60, 60, 0.8);
   
   font-size: clamp(40px, 13vw, 180px); /* Si el pop-up se achica, el título nunca será menos de 40px */ 
@@ -338,9 +359,11 @@ body.hide-ui .popup {
   padding-bottom: 15px;
   max-width: 100%;
   font-family: 'JetBrains Mono';
+  text-align: center;
   font-weight: lighter;
-  align-items: left;
-  border-top-right-radius: 100px;
+  align-items: center;
+  border-top-left-radius: 100px;
+  border-bottom-right-radius: 100px;
 }
 
 .info-text .info-title h2 {
@@ -364,7 +387,7 @@ body.hide-ui .popup {
 
 .info-text .info-dividertop {
     border: none;
-    border-top: 8px solid rgba(49, 49, 49);
+    border-top: 8px solid rgb(255, 251, 30);
     margin-bottom: 35px;   /* Controla el espacio arriba y abajo */
     margin-top: 80px;
     max-width: 100%;
@@ -373,7 +396,7 @@ body.hide-ui .popup {
 
   .info-text .info-dividerbottom {
     border: none;
-    border-top: 8px solid  rgba(49, 49, 49); /* Controla el espacio arriba y abajo */
+    border-top: 8px solid  rgb(255, 251, 30); /* Controla el espacio arriba y abajo */
     margin-top: 15px;
     margin-bottom: 160px; 
     max-width: 100%;
@@ -382,7 +405,7 @@ body.hide-ui .popup {
 
 .info-text .info-section-title {
   background:rgba(49, 49, 49);
-  color:  rgba(203, 196, 194);
+  color:  rgb(255, 251, 30);
   border-top-right-radius: 12px;
   border-bottom-left-radius: 12px;
   margin-top: 21px;
@@ -464,7 +487,7 @@ body.hide-ui .popup {
   flex-direction: column;
   height: fit-content;
   box-sizing: border-box;
-  background-color: rgba(203, 196, 194, 0.8);
+  background-color: rgba(237, 237, 237, 0.8);
   border: 1px solid rgba(49, 49, 49);
   border-top-right-radius: 12px;
   border-bottom-left-radius: 12px;
@@ -504,7 +527,7 @@ body.hide-ui .popup {
 #palette-sidebar-wrapper {
   margin-left: 0px;
   z-index: 2;
-  background-color:rgba(49, 49, 49, 0.8);
+  background-color:rgb(255, 251, 30);
   border: 1px solid rgba(49, 49, 49, 0.8);
   display: flex;
   flex-direction: row;
@@ -513,7 +536,7 @@ body.hide-ui .popup {
 }
 
 #palette-sidebar {
-  background: rgba(203, 196, 194, 0.8);
+  background: rgb(255, 251, 30);
   margin: 10px;
   padding: 10px;
   border-top-right-radius: 18px;
@@ -537,7 +560,7 @@ body.hide-ui .popup {
 
 /* === Tippy.js custom theme: modulariem === */
 .tippy-box[data-theme~='modulariem'] {
-  background-color: rgb(245, 245, 245); /* gris claro */
+  background-color: rgb(237, 237, 237); /* gris claro */
   color: rgba(49, 49, 49, 0.8);                /* texto gris oscuro */
   border: 1px solid rgba(49, 49, 49, 0.8);     /* borde gris oscuro */
   font-family: "JetBrains Mono";
@@ -574,9 +597,9 @@ body.hide-ui .popup {
 }
 
 .popup-close button {
-  background: rgba(49, 49, 49, 0.8);     /* Fondo oscuro SIEMPRE */
-  border: none;
-  color: rgba(203, 196, 194);       /* Texto claro */
+  background: rgb(255, 251, 30) !important;    /* Fondo oscuro SIEMPRE */
+  border:1px solid rgb(49,49,49) !important;
+  color: rgb(49, 49, 49) !important;       /* Texto claro */
   font-family: 'JetBrains Mono', monospace;
   font-size: clamp(8px, 1.5vw, 16px);
   border-radius: 0 !important;
@@ -592,10 +615,14 @@ body.hide-ui .popup {
   
 }
 
+button.popup-close {
+  color: rgb(49, 49, 49) !important;
+  border: 1px solid rgb(49, 49, 49) !important;       /* Texto claro */
+}
+
 /* Unifica el estilo de todos los botones */
 .popup-header button,
-.popup-shortcuts {
-  background: rgba(49, 49, 49, 0.8);     /* Fondo oscuro SIEMPRE */
+.popup-shortcuts {    
   border: none;
   color:rgba(203, 196, 194);      /* Texto claro */
   font-family: 'JetBrains Mono', monospace;
@@ -612,6 +639,8 @@ body.hide-ui .popup {
   height: auto;
 }
 .lang-btn{
+  color: rgb(49, 49, 49) !important;
+  border: 1px solid rgb(49, 49, 49) !important;   
   border-radius: 0px !important;
   border-top-left-radius: 12px !important;
   border-bottom-right-radius: 12px !important;
@@ -623,7 +652,7 @@ body.hide-ui .popup {
   justify-content: space-between;
   align-items: left;
   background: transparent;
-  color: rgba(203, 196, 194);       /* Texto claro */
+  color: rgb(255, 251, 30);      /* Texto claro */
   font-family: 'JetBrains Mono', monospace;
   font-size: clamp(8px, 1.5vw, 16px);
   border-radius: 0px 12px 0 0;
@@ -635,7 +664,7 @@ body.hide-ui .popup {
 .popup-header button:hover,
 .lang-btn:hover,
 .lang-btn.active {
-  background: #d0fc76;        /* Verde claro en hover */
+  background: rgb(255, 251, 30);       /* Verde claro en hover */
   color: rgba(49, 49, 49, 0.8);      /* Texto oscuro */
 }
 
@@ -710,8 +739,8 @@ body.hide-ui .popup {
 .header-pill,
 .tools-capsule,
 #tools-title {
-  background: rgba(49, 49, 49, 0.8); 
-  color:  rgb(203, 196, 194);
+  background: rgb(255, 251, 30); 
+  color:  rgb(123, 123, 123);
   font-size: clamp(8px, 1.5vw, 16px);
   display: flex;
   align-items: flex-start;    /* CORREGIDO aquí */
@@ -728,18 +757,14 @@ body.hide-ui .popup {
   margin-top: 0;
 }
 
-  .header-pill{
-    row-gap: 100px;
-
-  }
 
   
   .layers-header{
-  background: rgb(74, 67, 61);
-  color:  rgb(203, 196, 194);
+    background: rgb(255, 251, 30); 
+    color:  rgb(123, 123, 123);
   margin: 0;
-  border-top-right-radius: 18px;
-  font-size: clamp(8px, 13vw, 12px);
+  border: 0px !important;
+  font-size: clamp(12px, 13vw, 14px);
   font-family: 'JetBrains Mono', monospace;
   max-width: fit-content;
   max-height: fit-content;
@@ -809,8 +834,8 @@ body.hide-ui .popup {
   width: auto;
   height: 30px;
   padding: 4px 8px;
-  background: #fff;
-  color: rgb(49, 49, 49);
+  background: rgb(255, 251, 30); 
+  color:  rgb(123, 123, 123);
   border: 1px solid  rgb(49, 49, 49);
   border-top-right-radius: 6px;
   border-bottom-left-radius: 6px;
@@ -831,16 +856,10 @@ body.hide-ui .popup {
   opacity: 1;                        /* full opacity al pasar el ratón o hacer focus */
 }
 
-/* UI FOR THE SEED BAR */ /* UI FOR THE SEED BAR */ /* UI FOR THE SEED BAR */
-
-
-/* TOOLS HELPER */ /* TOOLS HELPER */ /* TOOLS HELPER */ /* TOOLS HELPER */ /* TOOLS HELPER */ 
-/* Oculta panel derecho si está colapsado */
 #palette.panels-collapsed #palette-panels {
   display: none;
 }
 
-/* Cuando está expandido, muestra el panel */
 #palette:not(.panels-collapsed) #palette-panels {
   display: block;
 }
@@ -864,28 +883,23 @@ height: 16px;
 
 
 /* BUTTONS POSITION *//* BUTTONS POSITION *//* BUTTONS POSITION *//* BUTTONS POSITION *//* BUTTONS POSITION */
-
 #manual-resize-controls {
   position: absolute;
   top: 10px;
   right: 10px;
-  background: white;
-  border: 1px solid #ccc;
+  background: rgb(255, 251, 30); 
+  border: 1px solid  rgb(123, 123, 123);
+  border-top-left-radius: 12px;
+  border-bottom-right-radius: 12px;
   padding: 6px;
   border-radius: 4px;
   z-index: 999;
 }
-
 /* === Growth‑only widget === */ /* === Growth‑only widget === */ /* === Growth‑only widget === */ /* === Growth‑only widget === */
-
-
 .popup-growth {
   position:relative;
   z-index: 1000;
 }
-
-
-
 #bottom-buttons {
   position: fixed !important ;
   right: 12px !important ;
@@ -895,4 +909,99 @@ height: 16px;
   gap: 10px !important ;
   z-index: 9999 !important ;
   align-items: flex-end !important ; /* para alinear el input a la derecha también */
+}
+/* === Slider Styling === */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  width: 100%;
+  height: 20px; /* Space for thumb */
+  cursor: pointer;
+}
+
+/* Track (black line) */
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border:  1px solid black;
+}
+
+input[type="range"]::-moz-range-track {
+  height: 6px;
+  border:  1px solid black;
+}
+
+input[type="range"]::-ms-track {
+  height: 6px;
+  border:  1px solid black;
+}
+
+/* Thumb (5px radius green circle) */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px; 
+  height: 16px;
+  border-radius: 12px;
+  background: rgb(255, 251, 30);; /* Green from your CSS */
+   /* Center on track */
+  cursor: pointer;
+  margin-top: -6px;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 16px; 
+  height: 16px;
+  border-radius: 12px;
+  background: rgb(255, 251, 30);; /* Green from your CSS */
+   /* Center on track */
+  cursor: pointer;
+  margin-top: -6px;
+}
+
+input[type="range"]::-ms-thumb {
+  width: 16px; 
+  height: 16px;
+  border-radius: 12px;
+  background: rgb(255, 251, 30); /* Green from your CSS */
+   /* Center on track */
+  cursor: pointer;
+  margin-top: -6px;
+}
+
+/* Focus/Hover states for accessibility */
+input[type="range"]:focus {
+  outline: none;
+}
+
+input[type="range"]:hover::-webkit-slider-thumb,
+input[type="range"]:hover::-moz-range-thumb,
+input[type="range"]:hover::-ms-thumb {
+  box-shadow: 0 0 4px rgb(255, 251, 30, 0.5); /* Subtle glow on hover */
+}
+
+#growth-popup {
+  width: fit-content;
+  height: fit-content;
+
+  /* purely visual: */
+  background: rgb(237, 237, 237);
+  padding: 10px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1001;
+}
+
+/* 2) the “dragging” override: clears the pin */
+#growth-popup.dragging {
+  bottom: auto;
+  right: auto;
+}
+
+#growth-popup.popup-growth {
+  position: fixed !important;  /* keep it fixed so dragging can work */
+  top:    auto   !important;    /* unset the original top/left */
+  left:   auto   !important;
+  bottom: 50px   !important;    /* your preferred offset */
+  right:  50px   !important;
 }

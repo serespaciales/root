@@ -28,6 +28,7 @@
 <!-- CSS -->
 <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/dist/tippy.css" />
 
+
 <!-- JS -->
 <script src="https://unpkg.com/@popperjs/core@2"></script>
 <script src="https://unpkg.com/tippy.js@6"></script>
@@ -102,9 +103,6 @@
             <label>Type
               <select id="shape-type">
                 <option value="circle">Circle</option>
-                <option value="square">Square</option>
-                <option value="star">Star</option>
-                <option value="organic">Organic</option>
               </select>
             </label>
             <label>Breath Amplitude</label>
@@ -114,6 +112,8 @@
             <label>Fill <input type="color" id="shape-fill-color" value="#00000080"></label>
             <label>Stroke <input type="color" id="shape-stroke-color" value="#000000"></label>
             <label>Size <input type="range" id="shape-size" min="0" max="100" value="70"></label>
+            <label>Rings</label>
+            <input id="shape-rings" type="range" min="1" max="10" step="1" value="5">
             <label><input type="checkbox" id="snap-rotation"> Snap rotation</label>
           </div>
           <div class="tool-options" id="options-text">
@@ -200,10 +200,26 @@
     <img src="tool-icons/R_genseed-off.svg" alt="Generate Seed" />
   </button>
 
+   <!-- Clone Seed -->
+   <button class="tool-btn" id="clone-seed" data-tool="clone-seed" data-tippy-content="Clone Seed">
+    <img src="tool-icons/R_clone_seed.svg" alt="Growth" />
+  </button>
+  
   <!-- Growth Settings -->
-  <button class="tool-btn" id="growth-btn" data-tool="growth" data-tippy-content="Growth Settings">
+  <button class="tool-btn" id="growth-btn" data-tippy-content="Growth Settings">
+    <img src="tool-icons/R_growth_settings.svg" alt="Growth" />
+  </button>
+
+  <!-- GO TO HARVEST -->
+  <button class="tool-btn" id="harvestgo-btn" data-tool="Harvest Btn" data-tippy-content="Go to Harvest">
     <img src="tool-icons/R_growthset-off.svg" alt="Growth" />
   </button>
+
+  <!-- GO TO HARVEST -->
+  <button class="tool-btn" id="gardengo-btn" data-tool="Harvest Btn" data-tippy-content="Go to Garden">
+    <img src="tool-icons/R.svg" alt="Growth" />
+  </button>
+
   
   <!-- Seed Search Input -->
   <div id="seed-search-ui">
@@ -213,19 +229,32 @@
 </div>
 
 <!-- 🌱 Growth popup (outside of bottom-buttons container) -->
-<div id="growth-popup" class="popup popup-growth">
+<div id="growth-popup" class="popup popup-growth" style="display: none;">
   <div class="popup-header">
     <div class="header-pill">Growth</div>
     <button class="popup-close">×</button>
   </div>
   <div class="popup-content">
     <div id="options-growth">
-      Sun <input type="range" name="sun" min="0" max="100" value="0"><br>
-      Water <input type="range" name="water" min="0" max="100" value="0"><br>
-      Vitamins <input type="range" name="vitamins" min="0" max="100" value="0"><br>
-      Days <input type="range" name="days" min="1" max="365" value="21"><br>
-      <button id="apply-growth">Apply Growth</button>
-      <button id="clone-seed">Clone Seed</button>
+      <div class="growth-settings-container">
+        <label>
+          Sun
+          <input type="range" name="sun" min="1" max="100" value="0">
+        </label>
+        <label>
+          Water
+          <input type="range" name="water" min="1" max="100" value="0">
+        </label>
+        <label>
+          Vitamins
+          <input type="range" name="vitamins" min="1" max="100" value="0">
+        </label>
+        <label>
+          Days
+          <input type="range" name="days" min="1" max="21" value="21">
+        </label>
+        <button id="apply-growth">Apply Growth</button>
+      </div>
     </div>
   </div>
 </div>
@@ -245,7 +274,7 @@
     </div>
     <div class="popup-content info-text">
       <hr class="info-dividertop">
-      <h2 class="info-title">Root</h2>
+      <h2 class="info-title">root</h2>
       <div class="info-subtitle">***BETA***</div>
       <div class="info-subtitle">Under GNU GPL v2.0</div>
       <hr class="info-dividerbottom">
@@ -483,15 +512,10 @@
         <div class="lang-content" data-lang="shortcuts" style="display: none;">
           <h3 class="info-section-title">Shortcuts / Atajos / Tastenkürzel</h3>
           <ul class="info-list">
-            <li><b>H</b> — Hide/show tools palette / Ocultar/mostrar paleta / Werkzeuge ein-/ausblenden</li>
+            <li><b>H</b> — Hide/show tools/ Ocultar/mostra / ein-/ausblenden</li>
             <li><b>S</b> — Save your work / Guardar tu trabajo / Speichern</li>
-            <li><b>Z</b> — Undo last action / Deshacer / Rückgängig</li>
-            <li><b>Shift + Z</b> — Redo / Rehacer / Wiederholen</li>
-            <li><b>P</b> — Pen tool / Lápiz / Stift</li>
-            <li><b>T</b> — Text tool / Texto / Text</li>
             <li><b>G</b> — Gradient tool / Gradiente / Verlauf</li>
-            <li><b>I</b> — Image tool / Imagen / Bild</li>
-            <li><b>V</b> — Select/Move / Seleccionar / Bewegen</li>
+            <li><b>Q</b> — Shape / Formas</li>
             <li><b>Esc</b> — Deselect/Close / Cerrar / Schließen</li>
           </ul>
         </div>

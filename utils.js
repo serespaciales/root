@@ -1,6 +1,4 @@
 
-
-
 function hslToRgb(h, s, l) {
     let r,g,b;
     if (!s) { r=g=b=l; }
@@ -57,15 +55,32 @@ function rgbToHsl(r, g, b) {
     // Arranca colapsado
     if (PALETTE) PALETTE.classList.add('panels-collapsed');
   
-    function resetCollapseTimer() {
-      clearTimeout(collapseTimer);
-      collapseTimer = setTimeout(() => {
-        PALETTE.classList.add('panels-collapsed');
-        TOOL_BTNS.forEach(b => b.classList.remove('active'));
-        const defaultPanel = document.getElementById('options-default');
-        if (defaultPanel) defaultPanel.style.display = 'block';
-      }, 3000);
+
+
+function resetCollapseTimer() {
+  clearTimeout(collapseTimer);
+  collapseTimer = setTimeout(() => {
+    // Check if any input within #palette is focused or hovered
+    const focusedElement = document.activeElement;
+    const isInputFocused = focusedElement && PALETTE.contains(focusedElement) && 
+                          (focusedElement.tagName === 'INPUT' || focusedElement.tagName === 'SELECT');
+    
+    // Check if cursor is over any input or select within palette
+    const hoveredElement = document.elementFromPoint(mouseX + window.scrollX, mouseY + window.scrollY);
+    const isInputHovered = hoveredElement && PALETTE.contains(hoveredElement) && 
+                          (hoveredElement.tagName === 'INPUT' || hoveredElement.tagName === 'SELECT');
+
+    if (!isInputFocused && !isInputHovered) {
+      console.log('Collapsing palette: no input focused or hovered');
+      PALETTE.classList.add('panels-collapsed');
+      TOOL_BTNS.forEach(b => b.classList.remove('active'));
+      const defaultPanel = document.getElementById('options-default');
+      if (defaultPanel) defaultPanel.style.display = 'block';
+    } else {
+      console.log('Palette collapse prevented: input is focused or hovered');
     }
+  }, 5000);
+}
   
     function showPanel(tool) {
       TOOL_BTNS.forEach(b => b.classList.remove('active'));
@@ -136,13 +151,7 @@ function rgbToHsl(r, g, b) {
       }
     });
   }
-  //========================0STOP ANIMATION LOGIC ========================
-  //========================0STOP ANIMATION LOGIC ========================
 
-
-  //========================DOWNLOAD IMAGE ========================
-// utils.js
-// utils.js
 
 // Este script debe cargarse tras p5.js y sketch.js en tu HTML
 window.addEventListener('DOMContentLoaded', () => {
@@ -164,8 +173,7 @@ window.addEventListener('DOMContentLoaded', () => {
     downloadBtn.disabled = true;
     const originalText = downloadBtn.textContent;
     const fmt = document.getElementById('export-format').value;
-
-    // Generar o recuperar seed de 7 caracteres
+  
     const seed = (() => {
       const params = new URLSearchParams(location.search);
       let s = params.get('seed');
@@ -176,22 +184,34 @@ window.addEventListener('DOMContentLoaded', () => {
       }
       return s;
     })();
-
+  
     const baseName = `ROOT_${seed}`;
     downloadBtn.textContent = `Preparando ${fmt.toUpperCase()}…`;
-
-    // PNG/JPEG instantáneo
+  
     if (fmt === 'png' || fmt === 'jpeg') {
-      // Asegúrate de exponer window.canvas en sketch.js: window.canvas = canvas;
-      saveCanvas(window.canvas || canvas, baseName, fmt);
-      downloadBtn.textContent = '¡Listo!';
+      const wasEditing = editingGrid;
+      editingGrid = false;
+      noLoop();
+  
+      // 👇 Forzamos todos los buffers y módulos antes de renderizar
+      computeGridPoints(); // asegúrate que los puntos estén correctos
+      drawSeed();          // redibuja la base
+      draw();              // fuerza todo el draw completo
+  
       setTimeout(() => {
-        downloadBtn.disabled = false;
-        downloadBtn.textContent = originalText;
-      }, 1000);
+        saveCanvas(window.canvas || canvas, baseName, fmt);
+        editingGrid = wasEditing;
+        loop();
+        redraw();
+  
+        downloadBtn.textContent = '¡Listo!';
+        setTimeout(() => {
+          downloadBtn.disabled = false;
+          downloadBtn.textContent = originalText;
+        }, 1000);
+      }, 150); // pequeño delay para permitir dibujado real
       return;
     }
-
     // Vídeo WebM 10s a 60fps
     const DURATION_MS = 10 * 1000;
     const FPS = 60;
@@ -252,3 +272,181 @@ window.addEventListener('DOMContentLoaded', () => {
     }, tick);
   });
 });
+
+
+//CLONE SEED  //CLONE SEED //CLONE SEED //CLONE SEED //CLONE SEED //CLONE SEED //CLONE SEED //CLONE SEED
+
+// Clone Seed functionality
+async function cloneSeed() {
+  try {
+    // Fetch the current seed's data
+    const currentDoc = await seedsCol.doc(seed).get();
+    if (!currentDoc.exists) {
+      console.error('Current seed not found');
+      alert('Error: Current seed not found in database.');
+      return;
+    }
+    const data = currentDoc.data();
+
+    // Generate a new 7-character seed
+    const newSeed = generateSeed();
+
+    // Prepare the cloned data, using originalLayers
+    const now = firebase.firestore.Timestamp.now();
+    const clonedData = {
+      seed: newSeed,
+      name: newSeed,
+      gridConfig: data.gridConfig, // Copy grid configuration
+      layers: data.originalLayers, // Use originalLayers, not growth-modified layers
+      originalLayers: data.originalLayers, // Preserve originalLayers for future cloning
+      plantedAt: now, // New timestamp
+      updatedAt: now,
+      lastUpdate: now,
+      growthProgress: 0, // Reset growth progress
+      growthConfig: {
+        sun: 0,
+        water: 0,
+        vitamins: 0,
+        days: 21, // Default growth days
+        startDate: now,
+        lastGrowthDay: 0,
+        hasFullyGrown: false,
+        growthFinishedAt: null
+      },
+      locked: false // New seed is not locked
+    };
+
+    // Save the cloned data to Firestore
+    await seedsCol.doc(newSeed).set(clonedData);
+    console.log(`✅ Cloned seed ${seed} to new seed ${newSeed}`);
+
+    // Open the new seed in a new tab
+    window.open(`index.html?seed=${newSeed}`, '_blank', 'noopener');
+  } catch (err) {
+    console.error('Error cloning seed:', err);
+    alert(`Failed to clone seed: ${err.message}`);
+  }
+}
+
+// Attach cloneSeed to the Clone Seed button
+document.addEventListener('DOMContentLoaded', () => {
+  const cloneSeedBtn = document.getElementById('clone-seed');
+  if (cloneSeedBtn) {
+    cloneSeedBtn.addEventListener('click', cloneSeed);
+  } else {
+    console.warn('Clone Seed button not found');
+  }
+});
+
+
+//CLONE SEED  //CLONE SEED //CLONE SEED //CLONE SEED //CLONE SEED //CLONE SEED //CLONE SEED //CLONE SEED
+
+
+
+
+//GRID UTILITIES //GRID UTILITIES //GRID UTILITIES //GRID UTILITIES //GRID UTILITIES
+
+
+function setupGridColorControls() {
+  const colorInput = document.getElementById("gridColor");
+  const opacityInput = document.getElementById("gridOpacity");
+
+  if (colorInput) {
+    colorInput.addEventListener("input", (e) => {
+      gridColor = e.target.value;
+      redraw();
+      saveGridConfig();  // ← Asegúrate de incluir esto
+    });
+  }
+
+  if (opacityInput) {
+    opacityInput.addEventListener("input", (e) => {
+      gridOpacity = parseInt(e.target.value, 10);
+      redraw();
+      saveGridConfig();  // ← Y aquí también
+    });
+  }
+}
+
+//GRID UTILITIES //GRID UTILITIES //GRID UTILITIES //GRID UTILITIES //GRID UTILITIES
+
+
+//SLIDER UTILITIES //SLIDER UTILITIES  //SLIDER UTILITIES  //SLIDER UTILITIES  //SLIDER UTILITIES  
+
+window.addEventListener('DOMContentLoaded', () => {
+  const gridColorInput = document.querySelector('input[name="grid-color"]');
+  if (gridColorInput) {
+    gridColorInput.addEventListener('input', () => {
+      window.gridColor = gridColorInput.value;
+      if (typeof window.markChanges === 'function') window.markChanges();
+      if (typeof window.debounceSaveToFirestore === 'function') window.debounceSaveToFirestore();
+      if (typeof window.redraw === 'function') window.redraw();
+      console.log(`Grid color input event fired! Updated to: ${window.gridColor}`);
+
+      setupGridColorControls();
+    });
+  } else {
+    console.warn('grid-color input not found');
+  }
+
+  const gridOpacityInput = document.querySelector('input[name="opacity"]');
+  if (gridOpacityInput) {
+    gridOpacityInput.addEventListener('input', () => {
+      window.gridOpacity = parseInt(gridOpacityInput.value, 10);
+      if (typeof window.markChanges === 'function') window.markChanges();
+      if (typeof window.debounceSaveToFirestore === 'function') window.debounceSaveToFirestore();
+      if (typeof window.redraw === 'function') window.redraw();
+      console.log(`Grid opacity input event fired! Updated to: ${window.gridOpacity}`);
+
+      setupGridColorControls();
+    });
+  } else {
+    console.warn('opacity input not found');
+  }
+
+  const confirmGridBtn = document.getElementById('confirm-grid');
+  if (confirmGridBtn) {
+    confirmGridBtn.addEventListener('click', () => {
+      const rows = parseInt(window.sliders.rows?.value?.() || 6, 10);
+      const cols = parseInt(window.sliders.columns?.value?.() || 6, 10);
+      window.columnPositions = Array.from({ length: cols + 1 }, (_, i) => (i * window.width) / cols);
+      window.rowPositions = Array.from({ length: rows + 1 }, (_, i) => (i * window.height) / rows);
+      if (typeof window.computeGridPoints === 'function') window.computeGridPoints();
+      if (typeof window.markChanges === 'function') window.markChanges();
+      if (typeof window.debounceSaveToFirestore === 'function') window.debounceSaveToFirestore();
+      if (typeof window.redraw === 'function') window.redraw();
+      console.log(`Confirm Grid clicked: ${rows} rows, ${cols} cols, color: ${window.gridColor}, opacity: ${window.gridOpacity}`);
+
+      setupGridColorControls();
+    });
+  } else {
+    console.warn('confirm-grid button not found');
+  }
+});
+
+
+
+//SLIDER UTILITIES //SLIDER UTILITIES  //SLIDER UTILITIES  //SLIDER UTILITIES  //SLIDER UTILITIES  
+
+
+//GO TO HARVEST BUTTON  //GO TO HARVEST BUTTON  //GO TO HARVEST BUTTON  //GO TO HARVEST BUTTON  
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('harvestgo-btn');
+  if (btn) {
+    btn.addEventListener('click', () => {
+      window.open('harvest.html', '_blank', 'noopener,noreferrer');
+    });
+  }
+});
+
+//GO TO HARVEST BUTTON  //GO TO HARVEST BUTTON  //GO TO HARVEST BUTTON  //GO TO HARVEST BUTTON  
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('gardengo-btn');
+  if (btn) {
+    btn.addEventListener('click', () => {
+      window.open('garden.html', '_blank', 'noopener,noreferrer');
+    });
+  }
+});
+
+//GO TO HARVEST BUTTON  //GO TO HARVEST BUTTON  //GO TO HARVEST BUTTON  //GO TO HARVEST BUTTON 

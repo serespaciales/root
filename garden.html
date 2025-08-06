@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Garden of Fully Grown Seeds</title>
+  <link rel="stylesheet" href="garden.css">
+</head>
+<body>
+<div id="loading-overlay">
+  <div class="loader-text">Loading seeds…</div>
+</div>
+
+<div id="buttonsgarden">
+    <div id="root-garden"    class="gridpill">root</div>
+    <div id="harvest-garden" class="gridpill">harvest</div>
+    <div id="garden-garden"  class="gridpill">garden</div>
+  </div>
+
+  <div id="garden-grid"></div>
+
+  <!-- Dependencias externas -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+  <script src="https://unpkg.com/p5.fillgradient@0.1.2/dist/p5.fillGradient.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <!-- Lógica de seeds y render -->
+  <script src="utils.js"></script>
+  <script src="common.js"></script>
+  <script src="growthfx.js"></script>
+  <script src="harvest.js"></script>
+  <script src="growth.js"></script>
+  <script src="garden.js"></script>
+</body>
+</html>

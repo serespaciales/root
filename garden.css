@@ -1,0 +1,124 @@
+:root {
+    /* Ajusta este valor hasta que te guste:
+       1 = ocupa todo el wrapper
+       <1 = más pequeño */
+    --seed-scale: 0.5;
+  }
+
+body {
+background-color: rgb(237, 237, 237);
+}
+
+
+#buttonsgarden {
+    position: fixed !important ;
+    right: 12px !important ;
+    bottom: 12px !important ;
+    display: flex !important ;
+    flex-direction: row !important ;
+    gap: 10px !important ;
+    z-index: 9999 !important ;
+    align-items: flex-end !important ; /* para alinear el input a la derecha también */
+  }
+
+  /* --- Pantalla de carga --- */
+#loading-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgb(237, 237, 237);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+  .loader-text {
+    margin-bottom: 14px;
+    padding: 3px 14px 3px 14px;
+    border-radius: 0px;
+    border-bottom-left-radius: 12px;
+    border-top-right-radius: 12px;
+    background: rgba(49, 49, 49, 0.8); 
+    color:  rgb(203, 196, 194);
+    font-size: clamp(8px, 1.5vw, 16px);
+    font-family: 'JetBrains Mono';
+  }
+  
+  #garden-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    max-width: 1000px;      /* Opcional: limita el ancho total del grid */
+    margin: 0 auto;         /* Centra el grid en la página */
+  }
+
+  .gridpill {
+    font-family: 'JetBrains Mono';
+    opacity: 1;
+    transition: 0.3s ease;
+    margin: 0px;
+    max-width: fit-content;
+    max-height: fit-content;
+    padding: 3px 14px 3px 14px;
+    border-radius: 0px;
+    border-bottom-left-radius: 12px;
+    border-top-right-radius: 12px;
+    background: rgba(49, 49, 49, 0.8); 
+    color:  rgb(203, 196, 194);
+    font-size: clamp(8px, 1.5vw, 16px);
+    z-index: 99;
+  
+  }
+
+  #root-garden {
+    background: rgb(255, 251, 30); 
+    color:  rgb(49,49,49);
+  }
+  
+  #harvest-garden{
+    background: rgb(30, 236, 255); 
+    color:  rgb(49,49,49);
+  }
+
+  #garden-garden {
+    background: rgb(146, 255, 30); 
+    color:  rgb(49,49,49);
+  }
+
+
+  
+  .garden-item {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    /* Reserva proporción cuadrada: */
+    aspect-ratio: 1 / 1;
+  }
+  
+  .garden-item iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    border: none;
+  
+    /* Usa transformación en vez de llenar al 100% */
+    transform-origin: top left;
+    transform: scale(var(--seed-scale));
+  
+    /* Compensa el scale para que el contenido quede ajustado al wrapper */
+    width: calc(100% / var(--seed-scale));
+    height: calc(100% / var(--seed-scale));
+  }
+  
+  .garden-item .label {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: rgba(255,255,255,0.8);
+    padding: 4px 8px;
+    font-size: clamp(8px, 1.5vw, 16px);
+    border-radius: 4px;
+    z-index: 1;
+  }

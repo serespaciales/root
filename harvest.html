@@ -8,21 +8,25 @@
 </head>
 <body data-mode="view">
 
-  <!-- Header con input de búsqueda -->
-  <div id="header-container">
-    <h1>Search your seed ID here</h1>
-    <form id="seed-finder">
-      <label for="seedId">Seed ID</label>
-      <input type="text" id="seedId" maxlength="7">
-      <button type="submit" id="lookupBtn">Search Seed</button>
-      <div id="seedError"></div>
-    </form>
-  </div>
 
   <!-- Canvas container, only contains the wrapper for the canvas -->
   <div id="growing-container">
     <div id="growing-wrapper"></div>
   </div>
+
+  <!-- Header con input de búsqueda -->
+  <div id="finder-header">
+    <div id="headerpill"> Harvest</div>
+    <div id="header-container">
+      <form id="seed-finder">
+        <label for="seedId"></label>
+        <input type="text" id="seedId" maxlength="7">
+        <button type="submit" id="lookupBtn">Search Seed</button>
+        <div id="seedError"></div>
+      </form>
+    </div>
+  </div>
+
 
   <!-- Moved no-growth-message and seedFullscreenBtn outside growing-container -->
   <div id="no-growth-message">

@@ -394,25 +394,31 @@ function drawSeedGrowthInst(growthConfig, layers = null) {
 
       } else if (visual.type === 'shape' && visual.shape) {
         const s = visual.shape;
+        // convertido a porcentaje si viene en [0..1]
         let sizePct = s.size != null ? s.size : 1;
         if (sizePct <= 1) sizePct *= 100;
-
+      
+        // 1) Recupera las nuevas propiedades de tu objeto
+        const subdivisions    = Number.isInteger(s.subdivisions)    ? s.subdivisions    : 5;
+        const breathPhase     = typeof s.breathPhase     === 'number' ? s.breathPhase     : 0;
+        const breathAmplitude = typeof s.breathAmplitude === 'number' ? s.breathAmplitude : 0.3;
+        const breathSpeed     = typeof s.breathSpeed     === 'number' ? s.breathSpeed     : 0.5;
+        const rotationSpeed   = typeof s.rotationSpeed   === 'number' ? s.rotationSpeed   : 0.1;
+      
+        // 2) Llama a drawShape pasando **todas** las props
         drawShape(
-          null,
-          cellW, cellH,
-          s.shapeType   || 'circle',
-          s.fillColor   || '#ffffff',
-          s.strokeColor || '#000000',
-          sizePct,
-          r, c,
-          layer.visuals
+          cellW, cellH,              // ancho / alto de celda
+          s.shapeType,               // tipo de forma
+          s.fillColor,               // fill
+          s.strokeColor,             // stroke
+          sizePct,                   // tamaño
+          subdivisions,              // **nº de rings**
+          breathPhase,               // **desfase inicial**
+          breathAmplitude,           // **amplitud de respiración**
+          breathSpeed,               // **velocidad de respiración**
+          rotationSpeed              // **velocidad de rotación**
         );
-
-        if (visual.bloom && growthConfig) {
-          applyBloomExpansion(null, visual);
-        }
       }
-
       pop();
     }
   }

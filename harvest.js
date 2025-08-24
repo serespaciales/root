@@ -433,4 +433,26 @@ function _getCellBuffer(p, cache, row, col, cellW, cellH) {
   return cache[key];
 }
 
+// --- Shortcut: S para guardar PNG en Harvest ---
+function keyPressed() {
+  // evita interferir si estás escribiendo en un input
+  const tag = (document.activeElement && document.activeElement.tagName) || '';
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+  const k = (typeof key === 'string') ? key.toLowerCase() : '';
+  if (k === 's') {
+    // intentamos obtener el seed para el nombre del archivo
+    const params = new URLSearchParams(window.location.search);
+    const seedParam =
+      params.get('seed') ||
+      (document.getElementById('seedId') && document.getElementById('seedId').value) ||
+      'harvest';
+
+    // si quisieras ocultar textos superpuestos antes de exportar, podrías
+    // forzar un redraw aquí. En Harvest no dibujas cursor, así que no hace falta.
+    saveCanvas(`seed_${seedParam}_harvest`, 'png');
+    console.log('✅ PNG guardado desde Harvest');
+    return false; // consumimos el atajo
+  }
+}
 

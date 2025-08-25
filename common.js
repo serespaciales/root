@@ -346,28 +346,37 @@ function drawShape(
 ) {
   const w = cellW, h = cellH;
 
-  // defaults robustos
-  const amp     = typeof breathAmplitude === 'number' ? breathAmplitude : 0.3;
-  const freq    = typeof breathSpeed     === 'number' ? breathSpeed     : 0.5;
-  const rotSpd  = typeof rotationSpeed   === 'number' ? rotationSpeed   : 0.1;
-  const phase   = typeof breathPhase     === 'number' ? breathPhase     : 0;
+  // usar el mismo estado de pausa que ya tienes en utils.js
+  const fc = (typeof animationsPaused !== 'undefined' && animationsPaused)
+    ? (typeof pausedFrameCount !== 'undefined' ? pausedFrameCount : frameCount)
+    : frameCount;
 
+  const tSec = (typeof animationsPaused !== 'undefined' && animationsPaused && typeof pausedMillis !== 'undefined')
+    ? pausedMillis / 1000
+    : millis() / 1000;
+
+  // defaults robustos
+  const amp    = (typeof breathAmplitude === 'number') ? breathAmplitude : 0.3;
+  const freq   = (typeof breathSpeed     === 'number') ? breathSpeed     : 0.5; // Hz
+  const rotSpd = (typeof rotationSpeed   === 'number') ? rotationSpeed   : 0.1; // rad/s
+  const phase  = (typeof breathPhase     === 'number') ? breathPhase     : 0;
+
+  // tamaño (acepta 0..1 como %)
   let size = (sizePct != null) ? sizePct : 100;
-  if (size <= 1) size *= 100; // permite 0..1 como %
+  if (size <= 1) size *= 100;
 
   const base   = Math.min(w, h) * (size / 100);
-  const t      = (typeof frameCount === 'number' ? frameCount : 0) * 0.02; // tiempo básico
-  const breath = 1 + Math.sin((TWO_PI * freq * t) + phase) * amp;
+  const breath = 1 + Math.sin((TWO_PI * freq * tSec) + phase) * amp;
 
   // estilos
-  if (fillColor) fill(color(fillColor)); else noFill();
+  if (fillColor)   fill(color(fillColor)); else noFill();
   if (strokeColor) stroke(color(strokeColor)); else noStroke();
 
   const type = (shapeType || 'circle').toLowerCase();
 
   push();
   translate(w / 2, h / 2);
-  rotate(rotSpd * frameCount * 0.02);
+  rotate(rotSpd * tSec); // ✅ respeta pausa
 
   if (type === 'square') {
     const side = base * breath;
@@ -378,13 +387,13 @@ function drawShape(
   }
 
   if (type === 'star') {
-    const points = Math.max(4, (subdivisions | 0) || 5); // usa subdivisions como nº de puntas
+    const points = Math.max(4, (subdivisions | 0) || 5); // nº de puntas
     const outerR = (base * breath) / 2;
     const innerR = outerR * 0.5;
 
     beginShape();
     for (let i = 0; i < points * 2; i++) {
-      const ang = (i * PI) / points;         // alterna pico/valle
+      const ang = (i * PI) / points; // alterna pico/valle
       const r   = (i % 2 === 0) ? outerR : innerR;
       vertex(Math.cos(ang) * r, Math.sin(ang) * r);
     }
@@ -400,16 +409,14 @@ function drawShape(
     return;
   }
 
-  // Fallback: anillos concéntricos (compatible con versiones previas)
+  // Fallback: anillos concéntricos (compatibilidad)
   const rings = Math.max(1, (subdivisions | 0) || 5);
   for (let i = 1; i <= rings; i++) {
     const r = (base * breath / 2) * (i / rings);
     ellipse(0, 0, r * 2, r * 2);
   }
-  drawingContext.restore();
-  pop();
+  pop(); // ✅ un solo pop (sin drawingContext.restore)
 }
-
 
 
 function setupToolLogic() {

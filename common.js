@@ -331,54 +331,86 @@ function drawGrid(p, rows, cols, cellWidth, cellHeight) {
 //=========================COLOR HELPERS================================
 
 
-
+// common.js
 function drawShape(
-  w, h,
-  shapeType     = "circle",
-  fillColor     = '#000',
-  strokeColor   = '#fff',
-  size          = 100,
-  subdivisions  = 5,
-  breathPhase   = 0,      // <-- valor por defecto
-  breathAmp     = 0.3,
-  breathSpeed   = 0.5,
-  rotationSpeed = 0.1
+  cellW, cellH,
+  shapeType,
+  fillColor,
+  strokeColor,
+  sizePct,
+  subdivisions,
+  breathPhase,
+  breathAmplitude,
+  breathSpeed,
+  rotationSpeed
 ) {
+  const w = cellW, h = cellH;
 
-  const baseSize = constrain(size / 100, 0, 1);
-  const amp      = constrain(breathAmp, 0, 1);
-  const freq     = constrain(breathSpeed, 0.1, 10);
-  const rotSpd   = rotationSpeed;
-  const t        = animationsPaused ? pausedMillis/1000 : millis()/1000;
+  // defaults robustos
+  const amp     = typeof breathAmplitude === 'number' ? breathAmplitude : 0.3;
+  const freq    = typeof breathSpeed     === 'number' ? breathSpeed     : 0.5;
+  const rotSpd  = typeof rotationSpeed   === 'number' ? rotationSpeed   : 0.1;
+  const phase   = typeof breathPhase     === 'number' ? breathPhase     : 0;
+
+  let size = (sizePct != null) ? sizePct : 100;
+  if (size <= 1) size *= 100; // permite 0..1 como %
+
+  const base   = Math.min(w, h) * (size / 100);
+  const t      = (typeof frameCount === 'number' ? frameCount : 0) * 0.02; // tiempo básico
+  const breath = 1 + Math.sin((TWO_PI * freq * t) + phase) * amp;
+
+  // estilos
+  if (fillColor) fill(color(fillColor)); else noFill();
+  if (strokeColor) stroke(color(strokeColor)); else noStroke();
+
+  const type = (shapeType || 'circle').toLowerCase();
 
   push();
-  translate(w/2, h/2);
-  drawingContext.save();
-  drawingContext.beginPath();
-  drawingContext.rect(-w/2, -h/2, w, h);
-  drawingContext.clip();
-  rotate(t * rotSpd);
+  translate(w / 2, h / 2);
+  rotate(rotSpd * frameCount * 0.02);
 
-  // Asegúrate de tener un entero
-  const rings = floor(subdivisions);
-  for (let i = 0; i < rings; i++) {
-     const phase = sin(TWO_PI * freq * t + i * 0.3 + breathPhase);
-    const maxD  = baseSize * max(w, h) * (1 - i * 0.1);
-    const dia   = map(phase, -1, 1, 0, maxD * 1.5);
-    if (dia <= 0) continue;
-
-    if (i % 2 === 0) {
-      fill( color(fillColor) );
-    } else {
-      fill( color(strokeColor) );
-    }
-    noStroke();
-    ellipse(0, 0, dia, dia);
+  if (type === 'square') {
+    const side = base * breath;
+    rectMode(CENTER);
+    rect(0, 0, side, side);
+    pop();
+    return;
   }
 
+  if (type === 'star') {
+    const points = Math.max(4, (subdivisions | 0) || 5); // usa subdivisions como nº de puntas
+    const outerR = (base * breath) / 2;
+    const innerR = outerR * 0.5;
+
+    beginShape();
+    for (let i = 0; i < points * 2; i++) {
+      const ang = (i * PI) / points;         // alterna pico/valle
+      const r   = (i % 2 === 0) ? outerR : innerR;
+      vertex(Math.cos(ang) * r, Math.sin(ang) * r);
+    }
+    endShape(CLOSE);
+    pop();
+    return;
+  }
+
+  if (type === 'circle') {
+    const radius = (base * breath) / 2;
+    ellipse(0, 0, radius * 2, radius * 2);
+    pop();
+    return;
+  }
+
+  // Fallback: anillos concéntricos (compatible con versiones previas)
+  const rings = Math.max(1, (subdivisions | 0) || 5);
+  for (let i = 1; i <= rings; i++) {
+    const r = (base * breath / 2) * (i / rings);
+    ellipse(0, 0, r * 2, r * 2);
+  }
   drawingContext.restore();
   pop();
 }
+
+
 
 function setupToolLogic() {
   if (MODE !== 'edit') {

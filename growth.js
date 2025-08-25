@@ -14,9 +14,15 @@
 async function fetchAndRenderGrowth(seedId) {
   const db     = firebase.firestore();
   const docRef = db.collection('seeds').doc(seedId);
-  const docSnap = await docRef.get();
+  const docSnap = await docRef.get({ source: 'server' });
   if (!docSnap.exists) return;
   const data = docSnap.data();
+
+  // 🔄 Refresca SIEMPRE base antes del merge (importantísimo)
+  window.gridConfig     = data.gridConfig || window.gridConfig;
+  window.originalLayers = Array.isArray(data.originalLayers)
+    ? data.originalLayers
+    : (window.originalLayers || []);
 
   // — Referencias DOM
   const sunEl            = document.getElementById('sun-value');
@@ -37,13 +43,45 @@ async function fetchAndRenderGrowth(seedId) {
     return;
   }
 
-  // — Datos y capas
-  window.gridConfig    = data.gridConfig;
+  // Gate de growth real
+  const gcPre = data.growthConfig || null;
+  const hasStart = !!(gcPre?.startDate?.toDate?.() && gcPre.startDate.toMillis() > 0);
+  const hasDoses = !!(gcPre && ((gcPre.sun||0) > 0 || (gcPre.water||0) > 0 || (gcPre.vitamins||0) > 0));
+  const HAS_GROWTH = hasStart && hasDoses;
+
+  // === Si NO hay growth, mostrar ORIGINAL y salir temprano ===
+  if (!HAS_GROWTH) {
+    window.hasGrown = false;
+
+    // Mostrar solo original (fallback a layers si faltara)
+    window.currentLayers = (window.originalLayers && window.originalLayers.length)
+      ? window.originalLayers
+      : (data.layers || []);
+
+    // Actualizar UI "no growth"
+    growSummary.style.display     = 'none';
+    noGrowthMessage.style.display = 'block';
+    growingContainer.classList.add('no-growth');
+
+    // Valores visibles en 0 para evitar confusión
+    sunEl.textContent   = '0';
+    waterEl.textContent = '0';
+    vitEl.textContent   = '0';
+    daysEl.textContent  = '0';
+    totalEl.textContent = String(gcPre?.days || 21);
+    const updatedAtRaw  = data.updatedAt?.toDate?.() || new Date();
+    lastEl.textContent  = updatedAtRaw.toLocaleString();
+    progressEl.textContent = '0.0%';
+
+    return; // 👈 importantísimo: no sigas con lógica de growth
+  }
+
+  // === SÍ hay growth: fusionar capas y configurar estado ===
   window.currentLayers = mergeLayers(
-    window.originalLayers,          // ya cargado en fetchAndRenderSeed
-    data.layers       || []
+    window.originalLayers,
+    Array.isArray(data.layers) ? data.layers : []
   );
-  window.hasGrown      = true;
+  window.hasGrown = true;
 
   const gc        = data.growthConfig || {};
   const plantedAt = data.plantedAt?.toDate?.() || new Date();
@@ -80,8 +118,8 @@ async function fetchAndRenderGrowth(seedId) {
 
   // — Cálculo de días y horas transcurridos
   const now         = new Date();
-  const elapsedMs   = now.getTime() - startDate.getTime();
-  const elapsedDays = Math.floor(elapsedMs / (1000 * 60 * 60 * 24));
+  const elapsedMs   = Math.max(0, now.getTime() - startDate.getTime());
+  const elapsedDays = Math.max(0, Math.floor(elapsedMs / (1000 * 60 * 60 * 24)));
   daysEl.textContent  = String(elapsedDays);
   totalEl.textContent = String(totalDays);
 
@@ -89,11 +127,12 @@ async function fetchAndRenderGrowth(seedId) {
   const updatedAtRaw = data.updatedAt?.toDate?.() || now;
   lastEl.textContent = updatedAtRaw.toLocaleString();
 
-  // — Calcular progreso fino en horas
+  // — Calcular progreso fino en horas (con guard por si totalDays=0)
   const elapsedHours = elapsedMs / (1000 * 60 * 60);
-  const totalHours   = totalDays * 24;
+  const totalHours   = Math.max(1, totalDays * 24); // evita división por 0
   let progress       = (elapsedHours / totalHours) * 100;
   if (progress > 100) progress = 100;
+  if (progress < 0)   progress = 0;
   progressEl.textContent = `${progress.toFixed(1)}%`;
 
   // — PASO 2: solo al cruzar un día completo, actualizar lastGrowthDay y updatedAt
@@ -111,8 +150,8 @@ async function fetchAndRenderGrowth(seedId) {
   growSummary.style.display       = 'block';
   noGrowthMessage.style.display   = 'none';
   growingContainer.classList.remove('no-growth');
-
 }
+
 
 
 // Exportar para poder llamarla desde tu código principal:
@@ -197,104 +236,3 @@ function updateGradientBufferInst(colors, offset = 0, frame = frameCount) {
 }
 
 
-//== GRADIENT HELPER GROWING BY STEPS 
-
-//== LOGIC FOR DRAWING THE SEED FOR GROW !!! ONLY USE THIS ONE!!!! =====
-/**
- * Dibuja las capas de crecimiento aplicando efectos visuales
- * según la configuración de crecimiento actual.
- *
- * @param {p5} p - Instancia de p5.js (modo instancia)
- * @param {{sun:number, water:number, vitamins:number}} growthConfig - Niveles de crecimiento
- * @param {Array} layers - Capas actuales con elementos visuales por celda (r-c)
- */
-// Adapt drawSeedGrowthInst to global (in growth.js, remove 'p' params and use global functions)
-function drawSeedGrowthInst(growthConfig = {}, layers = null) {
-  const { rows, cols, canvasWidth, canvasHeight } = window.gridConfig;
-  const cellW = canvasWidth / cols;
-  const cellH = canvasHeight / rows;
-
-  const target = Array.isArray(layers) ? layers : window.currentLayers || [];
-  if (!target.length) {
-    console.log("⚠️ No hay capas para dibujar.");
-    return;
-  }
-
-  for (const layer of target) {
-    if (!layer.visuals) continue;
-
-    for (const [cellKey, visual] of Object.entries(layer.visuals)) {
-      const [r, c] = cellKey.split('-').map(Number);
-      if (!Number.isInteger(r) || !Number.isInteger(c)) continue;
-
-      translate(c * cellW, r * cellH);
-
-      if (visual.type === 'gradient' && Array.isArray(visual.colors)) {
-        let tmpColors = [...visual.colors];
-      
-        if (growthConfig?.sun) {
-          tmpColors = applySunBurnEffect(tmpColors, growthConfig.sun);
-        }
-        if (growthConfig?.vitamins) {
-          tmpColors = applySaturationBoost(tmpColors, growthConfig.vitamins);
-        }
-      
-        noStroke();
-      
-        let o = (frameCount * 0.01 + (visual.offset || 0)) % 1;
-        let n = tmpColors.length;
-        let s = [];
-        for (let i = 0; i <= n; i++) s.push([color(tmpColors[i % n]), i / n / 2]);
-        for (let i = 0; i <= n; i++) s.push([color(tmpColors[i % n]), 0.5 + i / n / 2]);
-      
-        fillGradient('linear', {
-          from: [0, -cellH * o],
-          to: [0, cellH * (2 - o)],
-          steps: s
-        }, drawingContext);
-      
-        rect(0, 0, cellW, cellH);
-      
-        if (growthConfig?.water) {
-          applyWaterWobble(drawingContext, growthConfig.water, frameCount); // si aplicas sobre el canvas principal
-        }
-      
-        if (visual.bloom) {
-          applyBloomExpansion(null, visual);
-        }
-      } else if (visual.type === 'shape' && visual.shape) {
-        const s = visual.shape;
-        let sizePct = s.size != null ? s.size : 1;
-        if (sizePct <= 1) sizePct *= 100;
-
-        push();
-        tint(255, 255 * (s.opacity ?? 1));
-
-        drawShape(
-          cellW, cellH,
-          s.shapeType || 'circle',
-          s.fillColor || '#ffffff',
-          s.strokeColor || '#000000',
-          sizePct,
-          r, c,
-          layer.visuals
-        );
-        pop();
-
-        if (s.extrudePct || s.subdivisions || s.tint || visual.bloom) {
-          push();
-          applyBloomExpansion(visual);
-          pop();
-        }
-
-        if (visual.speckles?.pct || visual.blur) {
-          push();
-          applyMossMirage(visual, cellW, cellH);
-          pop();
-        }
-      }
-
-      translate(-c * cellW, -r * cellH);  // Reset translate (global)
-    }
-  }
-}

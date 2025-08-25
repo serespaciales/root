@@ -1,5 +1,7 @@
 //TAKEAWAY LOGS FOR DEBUG
-
+const ENABLE_REALTIME = true;
+let __harvestUnsub = null;
+let __usingPolling = false;
 
 //TAKE IT OUT/ COMMENT IF YOU WANT TO SEE CONSOLE LOGS 
 
@@ -27,35 +29,46 @@ function draw() {
   clear();
   drawGrid();
 
-  if (window.hasGrown && window.currentLayers?.length) {
-    const now = Date.now();
-    const startMs = new Date(window.growthConfig.startDate).getTime();
-    const elapsedMs = now - startMs;
-    const days = window.growthConfig.days;
+  // ¿Hay capas?
+  if (window.currentLayers?.length) {
+    if (window.hasGrown) {
+      // === Growth real ===
+      const gc = window.growthConfig || {};
+      const startMs = gc.startDate ? new Date(gc.startDate).getTime() : Date.now();
+      const days    = Math.max(1, gc.days || 21); // evita /0
+      const now     = Date.now();
+      const elapsedMs = Math.max(0, now - startMs);
 
-    const rawT = TEST_MODE
-      ? Math.min(elapsedMs / 1000 / days, 1)
-      : Math.min(elapsedMs / (days * 86400000), 1);
+      const rawT = TEST_MODE
+        ? Math.min(elapsedMs / (1000 * days), 1)
+        : Math.min(elapsedMs / (days * 86400000), 1);
 
-    const t = logisticEase(rawT, 12);
+      const t = logisticEase(rawT, 12);
 
-    if (!hasFrozenGrowth) {
-      const { sun = 0, water = 0, vitamins = 0 } = window.normGrowthConfig;
-      window.currentGrowthConfig = {
-        sun: sun * t,
-        water: water * t,
-        vitamins: vitamins * t
-      };
-      if (rawT >= 1) {
-        hasFrozenGrowth = true;
-        console.log('🌳 Fully grown');
+      if (!hasFrozenGrowth) {
+        const { sun = 0, water = 0, vitamins = 0 } = window.normGrowthConfig || {};
+        window.currentGrowthConfig = {
+          sun:      sun      * t,
+          water:    water    * t,
+          vitamins: vitamins * t
+        };
+        if (rawT >= 1) {
+          hasFrozenGrowth = true;
+          console.log('🌳 Fully grown');
+        }
       }
-    }
 
-    drawSeedGrowthInst(window.currentGrowthConfig, window.currentLayers);
+      renderVisuals(window.currentLayers, { bloom: true });
+    } else {
+      // === Sin growth: render original (growth en 0) y asegúrate de NO mostrar fully-grown
+      hasFrozenGrowth = false; // ← clave para no mostrar la etiqueta
+      window.currentGrowthConfig = { sun: 0, water: 0, vitamins: 0 };
+      renderVisuals(window.currentLayers, { bloom: false });;
+    }
   }
 
-  if (hasFrozenGrowth) {
+  // Mostrar la etiqueta SOLO si hay growth y se congeló al 100%
+  if (window.hasGrown && hasFrozenGrowth) {
     noStroke();
     fill(255, 220);
     textAlign(RIGHT, BOTTOM);
@@ -64,56 +77,70 @@ function draw() {
   }
 }
 
-
 // ========= Initialize the single growing canvas (global p5) ========= //
 function initializeCanvas(seedId) { 
   console.log('initializeCanvas called');
   const growingWrapper = document.getElementById('growing-wrapper');
-  const w = window.gridConfig?.canvasWidth || 600;
+  const w = window.gridConfig?.canvasWidth  || 600;
   const h = window.gridConfig?.canvasHeight || 600;
 
+  // Reset de estado de crecimiento al iniciar (evita “fully grown” fantasma)
+  hasFrozenGrowth = false;
   window.globalFrameCount = 0;
 
+  // Definimos setup y draw en modo global p5
   setup = () => {
     window.gradientCache = {};
     canvas = createCanvas(w, h).parent(growingWrapper);
-    gradientBuffer = createGraphics(w, h);  // Add this line here
+    gradientBuffer = createGraphics(w, h);
     loop();
   };
 
   draw = () => {
+    if (!window.gridConfig) return;
     clear();
     drawGrid();
 
-    if (window.hasGrown && window.currentLayers?.length) {
-      const now       = Date.now();
-      const startMs   = new Date(window.growthConfig.startDate).getTime();
-      const elapsedMs = now - startMs;
-      const days      = window.growthConfig.days;
+    if (window.currentLayers?.length) {
+      if (window.hasGrown) {
+        // === Growth real ===
+        const gc = window.growthConfig || {};
+        const startMs = gc.startDate ? new Date(gc.startDate).getTime() : Date.now();
+        const days    = Math.max(1, gc.days || 21);
+        const now     = Date.now();
+        const elapsedMs = Math.max(0, now - startMs);
 
-      const rawT = TEST_MODE
-        ? Math.min(elapsedMs / 1000 / days, 1)
-        : Math.min(elapsedMs / (days * 86400000), 1);
+        const rawT = TEST_MODE
+          ? Math.min(elapsedMs / (1000 * days), 1)
+          : Math.min(elapsedMs / (days * 86400000), 1);
 
-      const t = logisticEase(rawT, 12);
+        const t = logisticEase(rawT, 12);
 
-      if (!hasFrozenGrowth) {
-        const { sun = 0, water = 0, vitamins = 0 } = window.normGrowthConfig;
-        window.currentGrowthConfig = {
-          sun:      sun      * t,
-          water:    water    * t,
-          vitamins: vitamins * t
-        };
-        if (rawT >= 1) {
-          hasFrozenGrowth = true;
-          console.log('🌳 Fully grown – simulación completada.');
+        if (!hasFrozenGrowth) {
+          const { sun = 0, water = 0, vitamins = 0 } = window.normGrowthConfig || {};
+          window.currentGrowthConfig = {
+            sun:      sun      * t,
+            water:    water    * t,
+            vitamins: vitamins * t
+          };
+          if (rawT >= 1) {
+            hasFrozenGrowth = true;
+            console.log('🌳 Fully grown – simulación completada.');
+          }
         }
-      }
 
-      drawSeedGrowthInst(window.currentGrowthConfig, window.currentLayers);
+        // Render con efectos de growth (bloom = true)
+        renderVisuals(window.currentLayers, { bloom: true });
+      } else {
+        // === Sin growth: render original y NO mostrar fully-grown
+        hasFrozenGrowth = false;
+        window.currentGrowthConfig = { sun: 0, water: 0, vitamins: 0 };
+        renderVisuals(window.currentLayers, { bloom: false });
+      }
     }
 
-    if (hasFrozenGrowth) {
+    // Etiqueta solo si hay growth y ya está al 100%
+    if (window.hasGrown && hasFrozenGrowth) {
       noStroke();
       fill(255, 220);
       textAlign(RIGHT, BOTTOM);
@@ -226,6 +253,7 @@ function drawGrid() {
 
 
 // ========= Fetch data and render original seed ========= //
+// ========= Fetch data and render original seed ========= //
 async function fetchAndRenderSeed(seedId) {
   console.log('fetchAndRenderSeed called with seedId', seedId);
 
@@ -245,37 +273,47 @@ async function fetchAndRenderSeed(seedId) {
   }
 
   try {
-    const docSnap = await window.seedsCol.doc(seedId).get();
+    const docSnap = await window.seedsCol.doc(seedId).get({ source: 'server' });
     if (!docSnap.exists) throw new Error('Seed not found');
 
     const data = docSnap.data();
 
     // Canvas + capas originales
-    window.gridConfig = data.gridConfig || { rows: 2, cols: 2, canvasWidth: 400, canvasHeight: 300 };
+    window.gridConfig     = data.gridConfig || { rows: 2, cols: 2, canvasWidth: 400, canvasHeight: 300 };
     window.originalLayers = data.originalLayers || [];
-    window.layers = window.originalLayers;
-    
+    window.layers         = window.originalLayers;
+
+    // 👇 clave para que el render original lo controle esta función:
+    window.currentLayers  = window.originalLayers; // lo que pinta el draw()
+    window.hasGrown       = false;                 // render original (sin growth)
+
     if (!canvas) {
       initializeCanvas(seedId);
     } else {
       resizeCanvas(window.gridConfig.canvasWidth, window.gridConfig.canvasHeight);
     }
-    
 
     // Mostrar fecha de plantado
     const plantedAt = data.plantedAt?.toDate?.() || new Date();
     plantSummary.textContent = `Planted at: ${plantedAt.toLocaleString()}`;
 
-    // Call growth AFTER data load and canvas init
+    // Luego, el growth (si lo hay) lo mantiene fetchAndRenderGrowth + polling
     fetchAndRenderGrowth(seedId);
-    startGrowthPolling(seedId, 5000);
+    subscribeToSeedRealtime(seedId);     // 🔁 tiempo real con fallback a polling
+    enablePolling(seedId, 5000);         // arranca polling de inmediato; se apagará solo al llegar snapshot
 
+    window.addEventListener('unload', () => {
+      if (__harvestUnsub) { try { __harvestUnsub(); } catch {} }
+      disablePolling();
+    });
+    
     console.log('✅ Seed data loaded correctly');
   } catch (err) {
     console.error('fetchAndRenderSeed error:', err);
     errorDiv.textContent = `Error: ${err.message}`;
   }
 }
+
 
 // ========= Handle search form lookup ========= //
 function onLookup() {
@@ -332,35 +370,39 @@ window.addEventListener('unload', () => {
 });
 
 
-//========= instances auf p5 =================
+function getFrameIntensities() {
+  if (window.currentGrowthConfig &&
+      typeof window.currentGrowthConfig.sun === 'number') {
+    return window.currentGrowthConfig;
+  }
+  const gc   = window.growthConfig || {};
+  const norm = window.normGrowthConfig || {};
+  const startMs = gc.startDate ? new Date(gc.startDate).getTime() : Date.now();
+  const days    = Math.max(1, gc.days || 21);
+  const now     = Date.now();
+  const elapsed = Math.max(0, now - startMs);
 
-//THIS is necesary because im working with p5 on the sketch, but since harvest has more than one canvas, 
-// its better to wark as instances, that means that i needed to create functions that work throughtout the instance
-//without touching the p5 functions that only work from sketch, ik there is an easier way but this is what
-//i did for it :)))
+  const rawT = (typeof TEST_MODE !== 'undefined' && TEST_MODE)
+    ? Math.min(elapsed / (1000 * days), 1)
+    : Math.min(elapsed / (days * 86400000), 1);
 
-// ================================================
-// harvest.js — Función instance‐safe drawSeed (r-c keys)
-// ================================================
+  const t = (typeof logisticEase === 'function') ? logisticEase(rawT, 12) : rawT;
 
-/**
- * Dibuja gradientes y shapes según window.layers, en modo instancia p5.
- * Las claves de celdas son "row-col" (r-c).
- * @param {p5} p - Instancia de p5
- * @param {boolean} isGrown - Si true, aplica bloom expansion
- * @param {Array} layers - Array de layers; cada layer contiene `visuals` con keys "r-c"
- */
-/** 
- * Dibuja gradientes y shapes en modo instancia, usando window.gridConfig (sin p.width)
- * Las claves de celdas son "row-col".
- */
-function drawSeedGrowthInst(growthConfig, layers = null) {
+  return {
+    sun:      (norm.sun      || 0) * t,
+    water:    (norm.water    || 0) * t,
+    vitamins: (norm.vitamins || 0) * t
+  };
+}
+
+function renderVisuals(layers = null, options = { bloom: false }) {
   const {
     rows,
     cols,
     canvasWidth,
     canvasHeight
   } = window.gridConfig;
+
   const cellW = canvasWidth / cols;
   const cellH = canvasHeight / rows;
 
@@ -368,9 +410,10 @@ function drawSeedGrowthInst(growthConfig, layers = null) {
   if (!Array.isArray(target) || target.length === 0) return;
 
   const cache = window.gradientCache || (window.gradientCache = {});
+  const useBloom = !!options.bloom;
 
   for (const layer of target) {
-    if (!layer.visuals) continue;
+    if (!layer || !layer.visuals) continue;
 
     for (const [cellKey, visual] of Object.entries(layer.visuals)) {
       const [r, c] = cellKey.split('-').map(Number);
@@ -378,51 +421,146 @@ function drawSeedGrowthInst(growthConfig, layers = null) {
 
       push();
       translate(c * cellW, r * cellH);
-
       if (visual.type === 'gradient' && Array.isArray(visual.colors)) {
+        // Buffer por celda (necesario para water wobble)
         const key = `r${r}c${c}`;
         let pg = cache[key];
         if (!pg) pg = cache[key] = createGraphics(cellW, cellH);
-
-        const fc = animationsPaused ? pausedFrameCount : frameCount;
-        updateGradientBuffer(pg, visual.colors, visual.offset || 0, fc);
-        image(pg, 0, 0);
-
-        if (visual.bloom && growthConfig) {
-          applyBloomExpansion(null, visual); // null porque no pasamos instancia
+      
+        // === 1) Colores base (y en GROWTH aplicar Sun/Vitamins) ===
+        let cols = visual.colors.slice();
+        if (useBloom) {
+          const intens = (window.currentGrowthConfig || {sun:0, water:0, vitamins:0});
+          const sunI = Math.max(0, Math.min(1, intens.sun      || 0));
+          const vitI = Math.max(0, Math.min(1, intens.vitamins || 0));
+          if (vitI > 0 && typeof applySaturationBoost === 'function') {
+            cols = applySaturationBoost(cols, vitI);
+          }
+          if (sunI > 0 && typeof applySunBurnEffect === 'function') {
+            const burnt = applySunBurnEffect(cols, sunI);
+            cols = burnt.map(c => color(c).toString('#rrggbb'));
+          }
         }
-
-      } else if (visual.type === 'shape' && visual.shape) {
+      
+        // === 2) Scroll del gradiente SIN costura (doble stops como en Sketch) ===
+        const fc = (typeof animationsPaused !== 'undefined' && animationsPaused)
+          ? (typeof pausedFrameCount !== 'undefined' ? pausedFrameCount : frameCount)
+          : frameCount;
+        const o = (fc * 0.01 + (visual.offset || 0)) % 1;
+      
+        const steps = [];
+        const n = Math.max(2, cols.length);
+        for (let i = 0; i <= n; i++) steps.push([color(cols[i % n]), i / n / 2]);       // 0..0.5
+        for (let i = 0; i <= n; i++) steps.push([color(cols[i % n]), 0.5 + i / n / 2]); // 0.5..1
+      
+        pg.clear();
+        // Usa fillGradient sobre el CONTEXTO del buffer, no el global
+        if (typeof fillGradient === 'function') {
+          fillGradient(
+            'linear',
+            { from: [0, -cellH * o], to: [0, cellH * (2 - o)], steps },
+            pg.drawingContext
+          );
+          pg.drawingContext.fillRect(0, 0, cellW, cellH);
+        } else {
+          // Fallback: si falta la lib, degrade por líneas (no tan suave)
+          pg.noStroke();
+          for (let y = 0; y < cellH; y++) {
+            const ty  = (y / cellH + o) % 1;
+            const seg = Math.min(n - 2, Math.floor(ty * (n - 1)));
+            const tt  = (ty * (n - 1)) - seg;
+            const cA  = color(cols[seg]);
+            const cB  = color(cols[seg + 1]);
+            pg.stroke(lerp(red(cA), red(cB), tt), lerp(green(cA), green(cB), tt), lerp(blue(cA), blue(cB), tt));
+            pg.line(0, y, cellW, y);
+          }
+        }
+      
+      
+        // === 4) Dibujar buffer en la celda ===
+        image(pg, 0, 0);
+      
+        // === 5) Bloom opcional ===
+        if (useBloom && visual.bloom && typeof applyBloomExpansion === 'function') {
+          applyBloomExpansion(visual);
+        }
+      
+      }  else if (visual.type === 'shape' && visual.shape) {
         const s = visual.shape;
-        // convertido a porcentaje si viene en [0..1]
+      
+        // tamaño: si viene 0..1, pásalo a %
         let sizePct = s.size != null ? s.size : 1;
         if (sizePct <= 1) sizePct *= 100;
       
-        // 1) Recupera las nuevas propiedades de tu objeto
+        // props base con defaults
         const subdivisions    = Number.isInteger(s.subdivisions)    ? s.subdivisions    : 5;
         const breathPhase     = typeof s.breathPhase     === 'number' ? s.breathPhase     : 0;
         const breathAmplitude = typeof s.breathAmplitude === 'number' ? s.breathAmplitude : 0.3;
         const breathSpeed     = typeof s.breathSpeed     === 'number' ? s.breathSpeed     : 0.5;
         const rotationSpeed   = typeof s.rotationSpeed   === 'number' ? s.rotationSpeed   : 0.1;
       
-        // 2) Llama a drawShape pasando **todas** las props
-        drawShape(
-          cellW, cellH,              // ancho / alto de celda
-          s.shapeType,               // tipo de forma
-          s.fillColor,               // fill
-          s.strokeColor,             // stroke
-          sizePct,                   // tamaño
-          subdivisions,              // **nº de rings**
-          breathPhase,               // **desfase inicial**
-          breathAmplitude,           // **amplitud de respiración**
-          breathSpeed,               // **velocidad de respiración**
-          rotationSpeed              // **velocidad de rotación**
-        );
+        // Colores base
+        let fillCol   = s.fillColor;
+        let strokeCol = s.strokeColor;
+      
+        if (useBloom) {
+          // intensidades por frame (0..1)
+          const { sun = 0, water = 0, vitamins = 0 } = getFrameIntensities();
+      
+          // Vitamins = +saturación; Sun = “quemado” cálido
+          const adjColor = (hex) => {
+            if (!hex) return hex;
+            let arr = [hex];
+            if (vitamins > 0 && typeof applySaturationBoost === 'function') {
+              arr = applySaturationBoost(arr, vitamins);
+            }
+            if (sun > 0 && typeof applySunBurnEffect === 'function') {
+              arr = applySunBurnEffect(arr, sun);
+            }
+            const out = arr[0];
+            return (typeof out === 'string') ? out : color(out).toString('#rrggbb');
+          };
+      
+          fillCol   = adjColor(fillCol);
+          strokeCol = adjColor(strokeCol);
+      
+          // Water: solo aumenta la “respiración” (sin wobble de posición)
+          const waterAmpBoost = water * 0.4;      // +40% máx. sobre breath
+          const vitaminScale  = 1 + vitamins * 0.2; // +20% máx. de tamaño
+      
+          drawShape(
+            cellW, cellH,
+            s.shapeType,
+            fillCol,
+            strokeCol,
+            sizePct * vitaminScale,
+            subdivisions,
+            breathPhase,
+            breathAmplitude + waterAmpBoost,
+            breathSpeed,
+            rotationSpeed
+          );
+        } else {
+          // ORIGINAL (sin efectos de growth)
+          drawShape(
+            cellW, cellH,
+            s.shapeType,
+            fillCol,
+            strokeCol,
+            sizePct,
+            subdivisions,
+            breathPhase,
+            breathAmplitude,
+            breathSpeed,
+            rotationSpeed
+          );
+        }
       }
       pop();
     }
   }
 }
+
 
 
 function _getCellBuffer(p, cache, row, col, cellW, cellH) {
@@ -456,3 +594,72 @@ function keyPressed() {
   }
 }
 
+function enablePolling(seedId, ms = 5000) {
+  if (__usingPolling) return;
+  __usingPolling = true;
+  if (typeof startGrowthPolling === 'function') {
+    startGrowthPolling(seedId, ms);
+  }
+}
+
+function disablePolling() {
+  if (window._growthInterval) {
+    clearInterval(window._growthInterval);
+    window._growthInterval = null;
+  }
+  __usingPolling = false;
+}
+function subscribeToSeedRealtime(seedId) {
+  if (!ENABLE_REALTIME || !firebase?.firestore) {
+    enablePolling(seedId);
+    return;
+  }
+
+  const db = firebase.firestore();
+  const docRef = db.collection('seeds').doc(seedId);
+
+  // Limpia sub anterior
+  if (__harvestUnsub) { try { __harvestUnsub(); } catch {} __harvestUnsub = null; }
+
+  __harvestUnsub = docRef.onSnapshot(async (snap) => {
+    try {
+      if (!snap.exists) return;
+
+      // leer SIEMPRE del servidor para evitar caché
+      const fresh = await docRef.get({ source: 'server' });
+      const data  = fresh.data();
+
+      // refrescar base
+      window.gridConfig     = data.gridConfig || window.gridConfig;
+      window.originalLayers = Array.isArray(data.originalLayers) ? data.originalLayers : (window.originalLayers || []);
+      const currLayers      = Array.isArray(data.layers) ? data.layers : [];
+
+      // decidir si hay growth
+      const gc = data.growthConfig || null;
+      const hasStart = !!(gc?.startDate?.toDate?.() && gc.startDate.toMillis() > 0);
+      const hasDose  = !!(gc && ((gc.sun||0) > 0 || (gc.water||0) > 0 || (gc.vitamins||0) > 0));
+      const HAS_GROWTH = hasStart && hasDose;
+
+      if (HAS_GROWTH) {
+        window.currentLayers = mergeLayers(window.originalLayers, currLayers);
+        window.hasGrown = true;
+        await fetchAndRenderGrowth(seedId);   // tu UI de growth
+      } else {
+        window.currentLayers = window.originalLayers;
+        window.hasGrown = false;
+      }
+
+      if (typeof redraw === 'function') redraw();
+
+      // si llegó snapshot, apaga polling
+      disablePolling();
+    } catch (err) {
+      console.error('Realtime refresh error:', err);
+      // si falla, nos apoyamos en polling
+      enablePolling(seedId);
+    }
+  }, (err) => {
+    console.error('onSnapshot error:', err);
+    enablePolling(seedId);
+  });
+}

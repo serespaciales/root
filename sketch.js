@@ -172,54 +172,59 @@ async function saveToFirestore() {
     };
 
     const docRef = seedsCol.doc(seed);
-    const doc = await docRef.get();
-    const alreadyExists = doc.exists;
+const doc = await docRef.get();
+// ...ya tienes: const docRef = seedsCol.doc(seed); const doc = await docRef.get();
+const alreadyExists = doc.exists;
+const existingData = alreadyExists ? (doc.data() || {}) : {};
 
-    const originalLayers = sanitizedLayers;
+// Detecta si YA empezó el growth (o está bloqueado)
+const hasStartedGrowth =
+  !!existingData.locked ||
+  !!existingData.isBlockedForGrowth ||
+  !!existingData.growthConfig?.startDate ||
+  ((existingData.growthConfig?.sun || 0) +
+   (existingData.growthConfig?.water || 0) +
+   (existingData.growthConfig?.vitamins || 0) > 0);
 
-    const data = {
-      seed: seed,
-      name: seed,
-      gridConfig,
-      layers: sanitizedLayers,
-      originalLayers,
-      plantedAt: alreadyExists ? doc.data().plantedAt || now : now,
-      updatedAt: now,
-      lastUpdate: now,
-      growthProgress: alreadyExists ? doc.data().growthProgress || 0 : 0,
-      //30 JUN. reescritura de growthconfig con nuevos valores, si no funciona, volver a ver 0.7
-      growthConfig: alreadyExists
-    ? {
-        ...(doc.data().growthConfig || {
-          sun: 0,
-          water: 0,
-          vitamins: 0,
-          days: 21,
-          startDate: now
-        }),
-        lastGrowthDay:    doc.data().growthConfig?.lastGrowthDay    ?? 0,
-        hasFullyGrown: false,
-        growthFinishedAt: null
-      }
-    : {
-        sun: 0,
-        water: 0,
-        vitamins: 0,
-        days: 21,
-        startDate: now,
-        lastGrowthDay:    0,
-        hasFullyGrown: false,
-        growthFinishedAt: null
-      },
-      locked: alreadyExists ? doc.data().locked ?? false : false
-       };
-    
+// Mientras NO haya growth: el “original” sigue a tus ediciones
+const nextOriginalLayers = hasStartedGrowth
+  ? (existingData.originalLayers || sanitizedLayers)
+  : sanitizedLayers;
 
-    console.log('Saving data to Firestore:', JSON.stringify(data, null, 2));
-    await docRef.set(data, { merge: true });
+const data = {
+  seed: seed,
+  name: seed,
+  gridConfig,
+  layers: sanitizedLayers,
+  originalLayers: nextOriginalLayers,     // ⬅️ AQUÍ EL CAMBIO CLAVE
+  plantedAt: alreadyExists ? (existingData.plantedAt || now) : now,
+  updatedAt: now,
+  lastUpdate: now,
+  growthProgress: alreadyExists ? (existingData.growthProgress || 0) : 0,
+  locked: alreadyExists ? (existingData.locked ?? false) : false
+};
 
-    console.log(`✅ Auto-saved seed ${seed} to Firestore`);
-    hasUnsavedChanges = false;
+// Si ya existía growthConfig, la preservas (tu lógica actual)
+if (alreadyExists && existingData.growthConfig) {
+  const gc = existingData.growthConfig;
+  data.growthConfig = {
+    sun:              gc.sun ?? 0,
+    water:            gc.water ?? 0,
+    vitamins:         gc.vitamins ?? 0,
+    days:             gc.days ?? 21,
+    startDate:        gc.startDate || null,
+    lastGrowthDay:    gc.lastGrowthDay ?? 0,
+    hasFullyGrown:    gc.hasFullyGrown || false,
+    growthFinishedAt: gc.growthFinishedAt || null
+  };
+}
+
+console.log('Saving data to Firestore:', JSON.stringify(data, null, 2));
+await docRef.set(data, { merge: true });
+
+console.log(`✅ Auto-saved seed ${seed} to Firestore`);
+hasUnsavedChanges = false;
+
   } catch (err) {
     console.error('Error saving to Firestore:', err);
     console.warn(`❌ Failed to auto-save: ${err.message}`);
@@ -496,11 +501,96 @@ function setup() {
       }
 
       // 3.5 Lock si corresponde
-      if (data.locked) {
-        disableEditingControls();
-        window.growthManager?.init(seed);
-        window.growthManager?.lockSeed();
+ // 3.5 Lock si corresponde
+if (data.locked) {
+  // bandera global
+  window.editLocked = true;
+
+  // === WHITELIST de controles permitidos ===
+  const WHITELIST = new Set(['clone-seed', 'harvestgo-btn', 'gardengo-btn', 'seed-search-input']);
+
+  // 1) Desactivar interacción con el canvas (así no se dibuja con click/drag)
+  if (window.canvas?.elt) {
+    window.canvas.elt.style.pointerEvents = 'none';
+  }
+
+  // 2) Deshabilitar TODO menos lo permitido
+  document.querySelectorAll('.tool-btn, button, a, input, select, textarea').forEach(el => {
+    const id = el.id || '';
+    if (!WHITELIST.has(id)) {
+      el.disabled = true;
+      el.classList.add('disabled');
+      el.setAttribute('aria-disabled', 'true');
+      el.setAttribute('tabindex', '-1');
+      el.style.pointerEvents = 'none';
+    }
+  });
+
+  // 3) Semilla: que se pueda copiar con el cursor
+  const seedInput = document.getElementById('seed-search-input');
+  if (seedInput) {
+    // muestra la seed actual y evita edición accidental, pero deja seleccionar y copiar
+    seedInput.value = (typeof seed === 'string' ? seed : seedInput.value || '');
+    seedInput.readOnly = true;
+    seedInput.style.userSelect = 'text';
+    seedInput.style.pointerEvents = 'auto'; // aseguramos que el cursor pueda seleccionar
+    seedInput.addEventListener('focus', () => seedInput.select());
+  }
+
+  // 4) Guardia de puntero (captura) — bloquea clicks fuera de la whitelist
+  if (!window.__lockPointerGuardInstalled) {
+    window.__lockPointerGuardInstalled = true;
+    const blockIfNotWhitelisted = (e) => {
+      if (!window.editLocked) return;
+      const ctrl = e.target.closest?.('.tool-btn, button, a, input, select, textarea');
+      const id = ctrl?.id || '';
+      if (!WHITELIST.has(id)) {
+        e.stopPropagation();
+        e.preventDefault();
+        return false;
       }
+    };
+    ['click','mousedown','mouseup','touchstart','touchend','pointerdown','pointerup']
+      .forEach(ev => document.addEventListener(ev, blockIfNotWhitelisted, true));
+  }
+
+  // 5) Guardia de teclado — permite Tab, Escape y copiar (Ctrl/Cmd+C) sobre seed input
+  if (!window.__lockKeyGuardInstalled) {
+    window.__lockKeyGuardInstalled = true;
+    window.addEventListener('keydown', (e) => {
+      if (!window.editLocked) return;
+
+      const active = document.activeElement;
+      const activeId = active?.id || '';
+      const isSeedInput = activeId === 'seed-search-input';
+
+      // Permitir navegación básica
+      const SAFE_KEYS = new Set(['Escape', 'Tab']);
+      if (SAFE_KEYS.has(e.key)) return;
+
+      // Permitir copiar si el foco está en el seed input
+      const isCopy = (e.key.toLowerCase() === 'c') && (e.ctrlKey || e.metaKey);
+      if (isSeedInput && isCopy) return;
+
+      // Bloquear todo lo demás (incluye atajos de herramientas, dibujo, etc.)
+      e.stopPropagation();
+      e.preventDefault();
+      return false;
+    }, true);
+  }
+
+  // 6) Banner “bloqueada” (solo una vez)
+  if (!document.getElementById('growth-blocker-msg')) {
+    const msg = document.createElement('div');
+    msg.id = 'growth-blocker-msg';
+    msg.textContent = 'is blocked for growth';
+    msg.style = 'position:fixed;top:10px;right:10px;padding:8px 12px;background:#d0fc76;color:#333;border-radius:4px;z-index:2000;';
+    document.body.appendChild(msg);
+  }
+}
+
+
+
     } else {
       // 🌱 Nueva semilla
       canvas = createCanvas(container.clientWidth, container.clientHeight)

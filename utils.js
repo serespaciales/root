@@ -1,3 +1,27 @@
+// === BLOQUEO PERSISTENTE (helpers UI) ===
+function disableAllToolButtons() {
+  document.querySelectorAll('.tool-btn').forEach(btn => {
+    // deja habilitado solo lo que quieras (ej. clone)
+    if (btn.id !== 'clone-seed') {
+      btn.disabled = true;
+      btn.classList.add('disabled');
+    }
+  });
+}
+
+function showBlockedBanner() {
+  if (document.getElementById('growth-blocker-msg')) return;
+  const blockerMsg = document.createElement('div');
+  blockerMsg.id = 'growth-blocker-msg';
+  blockerMsg.textContent = 'is blocked for growth';
+  blockerMsg.style = 'position:fixed;top:10px;right:10px;padding:8px 12px;background:#d0fc76;color:#333;border-radius:4px;z-index:2000;';
+  document.body.appendChild(blockerMsg);
+}
+
+function applyLocalLockUI() {
+  disableAllToolButtons();
+  showBlockedBanner();
+}
 
 function hslToRgb(h, s, l) {
     let r,g,b;

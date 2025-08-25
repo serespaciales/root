@@ -64,11 +64,19 @@ applyBtn.addEventListener('click', async () => {
     const data = {
       growthConfig: cfg,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      // …otros campos que necesites…
+      locked: true,                // 👈 bloquea para siempre
+      isBlockedForGrowth: true,    // opcional, solo como espejo semántico
+      blockedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
 
     console.log('Guardando growthConfig:', data);
-    await seedsCol.doc(seedId).set(data, { merge: true });
+    await seedsCol.doc(seedId).set({
+      growthConfig: cfg, // tus sliders y startDate si ya existía
+      locked: true,
+      isBlockedForGrowth: true,
+      blockedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
 
     // Refresca el dibujo
     await fetchAndRenderGrowth(seedId);

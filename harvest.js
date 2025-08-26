@@ -498,6 +498,8 @@ function renderVisuals(layers = null, options = { bloom: false }) {
         const breathAmplitude = typeof s.breathAmplitude === 'number' ? s.breathAmplitude : 0.3;
         const breathSpeed     = typeof s.breathSpeed     === 'number' ? s.breathSpeed     : 0.5;
         const rotationSpeed   = typeof s.rotationSpeed   === 'number' ? s.rotationSpeed   : 0.1;
+        const spikes   = typeof s.spikes   === 'number' ? s.spikes   : 5;
+        
       
         // Colores base
         let fillCol   = s.fillColor;
@@ -538,7 +540,8 @@ function renderVisuals(layers = null, options = { bloom: false }) {
             breathPhase,
             breathAmplitude + waterAmpBoost,
             breathSpeed,
-            rotationSpeed
+            rotationSpeed,
+            spikes
           );
         } else {
           // ORIGINAL (sin efectos de growth)
@@ -552,7 +555,8 @@ function renderVisuals(layers = null, options = { bloom: false }) {
             breathPhase,
             breathAmplitude,
             breathSpeed,
-            rotationSpeed
+            rotationSpeed,
+            spikes
           );
         }
       }

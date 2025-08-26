@@ -107,14 +107,18 @@
                 <option value="Star">Star</option>
               </select>
             </label>
-            <label>Breath Amplitude</label>
+            <label>Amplitude</label>
             <input id="breath-amplitude" type="range" min="0" max="0.5" step="0.01" value="0.1">
-            <label>Breath Speed</label>
+            <label>Breathing</label>
             <input id="breath-speed"     type="range" min="0" max="3"   step="0.1"  value="1">
+            <label>Rotation</label>
+            <input id="shape-rot-speed" type="range" min="0" max="3" step="0.01" value="0">
+            <label>Spikes (for Star)</label>
+            <input id="shape-spikes" type="range" min="3" max="16" step="1" value="5">
             <label>Fill <input type="color" id="shape-fill-color" value="#00000080"></label>
             <label>Stroke <input type="color" id="shape-stroke-color" value="#000000"></label>
             <label>Size <input type="range" id="shape-size" min="0" max="100" value="70"></label>
-            <label>Rings</label>
+            <label>Children</label>
             <input id="shape-rings" type="range" min="1" max="10" step="1" value="5">
             <label><input type="checkbox" id="snap-rotation"> Snap rotation</label>
           </div>

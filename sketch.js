@@ -150,7 +150,10 @@ async function saveToFirestore() {
             tint: visual.shape.tint || null,
             breathAmplitude: visual.shape.breathAmplitude || 0,
             breathSpeed:     visual.shape.breathSpeed     || 0,
-            breathPhase:     visual.shape.breathPhase     || 0
+            breathPhase:     visual.shape.breathPhase     || 0,
+            rings:           visual.shape.rings || 1,
+            rotationSpeed:   visual.shape.rotationSpeed || 0,   
+            spikes:          visual.shape.spikes || 5            
           };
         }
 
@@ -1191,7 +1194,7 @@ if (visual.type === 'gradient' && visual.colors?.length >= 2) {
           const s = visual.shape;
           push();
           translate(x0, y0);
-          drawShape(w, h, s.shapeType, s.fillColor, s.strokeColor, s.size, s.subdivisions, s.breathPhase, s.breathAmplitude || 0.3, s.breathSpeed || 0.5, s.rotationSpeed || 0.1);
+          drawShape(w, h, s.shapeType, s.fillColor, s.strokeColor, s.size, s.subdivisions, s.breathPhase, s.breathAmplitude || 0.3, s.breathSpeed || 0.5, s.rotationSpeed || 0.1, s.spikes || 5);
           pop();
           visual.w = wCells;
           visual.h = hCells;
@@ -1769,9 +1772,10 @@ function drawOnCellUnderMouse() {
             const breathAmplitude = parseFloat(document.getElementById('breath-amplitude').value) || 0;
             const breathSpeed     = parseFloat(document.getElementById('breath-speed').value)     || 0.5;
             const rotationSpeed   = parseFloat(document.getElementById('rotation-speed')?.value)  || 0.1;
-
             const subdivisions = parseInt(document.getElementById('shape-rings').value, 10) || 1;
             const breathPhase = random(0, TWO_PI)  
+            const rotSpeed = parseFloat(document.getElementById('shape-rot-speed')?.value ?? '0') || 0;
+            const spikes   = parseInt(document.getElementById('shape-spikes')?.value ?? '5', 10) || 5;
 
             visuals[key] = {
               type: "shape",
@@ -1784,7 +1788,9 @@ function drawOnCellUnderMouse() {
                 breathAmplitude,
                 breathSpeed,
                 rotationSpeed,
-                subdivisions
+                subdivisions,
+                rotationSpeed: rotSpeed, 
+                spikes 
               },
               w: 1,
               h: 1

@@ -15,32 +15,43 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderSeeds(docs) {
       docs.forEach(doc => {
         const data = doc.data();
-        // Aquí ya no es necesario volver a filtrar por startDate, 
-        // porque la consulta sólo nos trajo los que tienen startDate > 0.
         const item = document.createElement('div');
         item.className = 'garden-item';
+    
         if (data.gridConfig) {
           const { canvasWidth, canvasHeight } = data.gridConfig;
           item.style.aspectRatio = `${canvasWidth} / ${canvasHeight}`;
         }
+    
+        // Placeholder thumb (label + play button)
         item.innerHTML = `
           <div class="label">Seed ${doc.id}</div>
-          <iframe 
-            src="harvest.html?seed=${encodeURIComponent(doc.id)}" 
-            loading="lazy">
-          </iframe>
+          <div class="iframe-placeholder">
+            <button class="play" aria-label="Play ${doc.id}">▶</button>
+          </div>
         `;
+    
+        // Click-to-play: create iframe only on demand
+        const ph = item.querySelector('.iframe-placeholder');
+        ph.addEventListener('click', () => {
+          if (item.querySelector('iframe')) return; // already loaded
+          const iframe = document.createElement('iframe');
+          iframe.loading = 'lazy';
+          iframe.referrerPolicy = 'no-referrer';
+          iframe.src = `harvest.html?seed=${encodeURIComponent(doc.id)}`;
+          ph.replaceWith(iframe);
+        }, { once: true });
+    
         grid.appendChild(item);
       });
     }
-  
+    
     async function loadPage() {
       // Creamos un Timestamp “mínimo” para filtrar > 0
       const zeroTS = new firebase.firestore.Timestamp(0, 0);
       let q = window.seedsCol
-        .where('growthConfig.startDate', '>', zeroTS)
-        .orderBy('growthConfig.startDate', 'desc')
-        .limit(PAGE_SIZE);
+      .orderBy('updatedAt', 'desc')
+      .limit(PAGE_SIZE);
   
       if (lastDoc) q = q.startAfter(lastDoc);
   

@@ -24,6 +24,32 @@ let refreshTimer;
 let hasFrozenGrowth = false;
 
 
+function showProgressPill(text = 'Recording… 0%') {
+  let pill = document.getElementById('record-pill');
+  if (!pill) {
+    pill = document.createElement('div');
+    pill.id = 'record-pill';
+    document.body.appendChild(pill);
+  }
+  pill.textContent = text;
+  pill.classList.add('show');
+}
+
+function updateProgressPill(pct) {
+  const pill = document.getElementById('record-pill');
+  if (!pill) return;
+  pill.textContent = `Recording… ${pct}%`;
+}
+
+function hideProgressPill() {
+  const pill = document.getElementById('record-pill');
+  if (!pill) return;
+  pill.classList.remove('show');
+  // quitar del DOM tras la animación
+  setTimeout(() => pill && pill.remove(), 180);
+}
+
+
 function draw() {
   if (!window.gridConfig) return;
   clear();
@@ -71,8 +97,9 @@ function draw() {
   if (window.hasGrown && hasFrozenGrowth) {
     noStroke();
     fill(255, 220);
-    textAlign(RIGHT, BOTTOM);
-    textSize(14);
+    textAlign(RIGHT, TOP);
+    textSize(12);
+    textFont('JetBrains Mono');
     text('✓ Fully grown', width - 10, height - 10);
   }
 }
@@ -596,7 +623,78 @@ function keyPressed() {
     console.log('✅ PNG guardado desde Harvest');
     return false; // consumimos el atajo
   }
+
+  // W: guardar VIDEO (misma lógica que el editor)
+if (k === 'w') {
+  const params = new URLSearchParams(window.location.search);
+  const seedParam =
+    params.get('seed') ||
+    (document.getElementById('seedId') && document.getElementById('seedId').value) ||
+    'harvest';
+  const baseName = `ROOT_${seedParam}`;
+
+  const canvasEl = document.querySelector('#growing-wrapper canvas') || document.querySelector('canvas');
+
+  const DURATION_MS = 10 * 1000; // = editor
+  const FPS = 60;                // = editor
+
+  if (!canvasEl?.captureStream) {
+    alert('captureStream() no disponible. Sólo PNG/JPEG.');
+    return false;
+  }
+
+  const stream = canvasEl.captureStream(FPS);
+  const mime = MediaRecorder.isTypeSupported('video/webm; codecs=vp9')
+    ? 'video/webm; codecs=vp9'
+    : 'video/webm';
+
+  let recorder;
+  let chunks = [];
+  try {
+    recorder = new MediaRecorder(stream, { mimeType: mime });
+  } catch (err) {
+    alert('MediaRecorder no soporta este MIME. Sólo PNG/JPEG.');
+    return false;
+  }
+
+  // ⬇️ Progress pill: iniciar a 0%
+  showProgressPill('Recording… 0%');
+
+  recorder.ondataavailable = e => e.data.size && chunks.push(e.data);
+  recorder.onstop = () => {
+    const blob = new Blob(chunks, { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${baseName}.webm`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    // ⬇️ Progress pill: esconder al terminar
+    hideProgressPill();
+  };
+
+  recorder.start();
+  let elapsed = 0;
+  const tick = 200;
+  const interval = setInterval(() => {
+    elapsed += tick;
+    const pct = Math.min(100, Math.floor((elapsed / DURATION_MS) * 100));
+    // ⬇️ Progress pill: actualizar %
+    updateProgressPill(pct);
+
+    if (elapsed >= DURATION_MS) {
+      clearInterval(interval);
+      recorder.stop();
+    }
+  }, tick);
+
+  return false;
 }
+}
+
 
 function enablePolling(seedId, ms = 5000) {
   if (__usingPolling) return;

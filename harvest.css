@@ -237,3 +237,27 @@ input[type="text"] {
   z-index: 99;
 
 }
+
+/* Progress pill para grabación */
+#record-pill {
+  position: fixed;
+  bottom: 12px;
+  right: 12px;
+  z-index: 10000;
+  padding: 3px 14px;
+  border-radius: 0;
+  border-bottom-left-radius: 12px;
+  border-top-right-radius: 12px;
+  background: rgba(237, 237, 237);
+  color: #313131;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(8px, 1.5vw, 12px);
+  pointer-events: none; /* no tapa clicks */
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity .15s ease, transform .15s ease;
+}
+#record-pill.show {
+  opacity: 1;
+  transform: translateY(0);
+}

@@ -1,136 +1,103 @@
-:root {
-    /* Ajusta este valor hasta que te guste:
-       1 = ocupa todo el wrapper
-       <1 = más pequeño */
-    --seed-scale: 0.5;
-  }
-
-body {
-background-color: rgb(237, 237, 237);
+:root{
+  /* Escala global del tamaño visible. Sube/baja sin tocar JS. */
+  --scale: 0.50; /* 0.50 = mitad del canvas original */
 }
 
+/* Fondo */
+body { background:#fff; }
 
-#buttonsgarden {
-    position: fixed !important ;
-    right: 12px !important ;
-    bottom: 12px !important ;
-    display: flex !important ;
-    flex-direction: row !important ;
-    gap: 10px !important ;
-    z-index: 9999 !important ;
-    align-items: flex-end !important ; /* para alinear el input a la derecha también */
-  }
-
-  /* --- Pantalla de carga --- */
-#loading-overlay {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgb(237, 237, 237);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-  }
-  .loader-text {
-    margin-bottom: 14px;
-    padding: 3px 14px 3px 14px;
-    border-radius: 0px;
-    border-bottom-left-radius: 12px;
-    border-top-right-radius: 12px;
-    background: rgba(49, 49, 49, 0.8); 
-    color:  rgb(203, 196, 194);
-    font-size: clamp(8px, 1.5vw, 16px);
-    font-family: 'JetBrains Mono';
-  }
-  
-  #garden-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
-    max-width: 1000px;      /* Opcional: limita el ancho total del grid */
-    margin: 0 auto;         /* Centra el grid en la página */
-  }
-
-  .gridpill {
-    font-family: 'JetBrains Mono';
-    opacity: 1;
-    transition: 0.3s ease;
-    margin: 0px;
-    max-width: fit-content;
-    max-height: fit-content;
-    padding: 3px 14px 3px 14px;
-    border-radius: 0px;
-    border-bottom-left-radius: 12px;
-    border-top-right-radius: 12px;
-    background: rgba(49, 49, 49, 0.8); 
-    color:  rgb(203, 196, 194);
-    font-size: clamp(8px, 1.5vw, 16px);
-    z-index: 99;
-  
-  }
-
-  #root-garden {
-    background: rgb(255, 251, 30); 
-    color:  rgb(49,49,49);
-  }
-  
-  #harvest-garden{
-    background: rgb(30, 236, 255); 
-    color:  rgb(49,49,49);
-  }
-
-  #garden-garden {
-    background: rgb(146, 255, 30); 
-    color:  rgb(49,49,49);
-  }
-
-
-  
-  .garden-item {
-    position: relative;
-    width: 100%;
-    overflow: hidden;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    /* Reserva proporción cuadrada: */
-    aspect-ratio: 1 / 1;
-  }
-  
-  .garden-item iframe {
-    position: absolute;
-    top: 0;
-    left: 0;
-    border: none;
-  
-    /* Usa transformación en vez de llenar al 100% */
-    transform-origin: top left;
-    transform: scale(var(--seed-scale));
-  
-    /* Compensa el scale para que el contenido quede ajustado al wrapper */
-    width: calc(100% / var(--seed-scale));
-    height: calc(100% / var(--seed-scale));
-  }
-  
-  .garden-item .label {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    background: rgba(255,255,255,0.8);
-    padding: 4px 8px;
-    font-size: clamp(8px, 1.5vw, 16px);
-    border-radius: 4px;
-    z-index: 1;
-  }
-
-  .garden-item { position: relative; }
-.iframe-placeholder {
-  width: 100%; height: 100%;
-  display: grid; place-items: center;
-  background: #111; border: 1px solid #333;
-  cursor: pointer;
+/* Pills flotantes */
+#buttonsgarden{
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 10px;
+  z-index: 9999;
+  align-items: flex-end;
 }
-.iframe-placeholder .play {
-  font: inherit; padding: 8px 12px;
-  background: #d0fc76; border: none; border-radius: 6px;
+.gridpill{
+  font-family:'JetBrains Mono', monospace;
+  padding: 3px 14px;
+  border-bottom-left-radius:12px;
+  border-top-right-radius:12px;
+  background: rgba(49,49,49,.8);
+  color:#cbc4c2;
+  font-size: clamp(8px,1.5vw,12px);
 }
+
+/* Loading overlay */
+#loading-overlay{
+  position:fixed; inset:0;
+  background:#ededed;
+  display:flex; align-items:center; justify-content:center;
+  z-index:9998;
+}
+.loader-text{
+  margin-bottom:14px; padding:3px 14px;
+  border-bottom-left-radius:12px; border-top-right-radius:12px;
+  background: rgba(49,49,49,.8); color:#cbc4c2;
+  font: 14px 'JetBrains Mono', monospace;
+}
+
+/* ===== Grid: EXACTAMENTE 2 columnas, sin estirar items ===== */
+#garden-grid{
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin: 0 auto;
+  justify-items: center;   /* no estires el contenido */
+  align-items: start;
+}
+
+/* ===== Tile =====
+   - Ancho = min(columna, canvasW * scale) => sin upscaling ni scroll.
+   - Alto desde la relación real (--ar = W/H).
+   - W/H originales se pasan por JS a --orig-w / --orig-h. */
+.garden-item{
+  position: relative;
+  width: min(100%, calc(var(--orig-w) * var(--scale)));
+  overflow: hidden;
+  border: 1px solid #313131;
+  border-radius: 0px;
+  border-top-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+  background: #f9f9f9;
+}
+
+/* El iframe rellena el tile 1:1 (sin transform ni calc) */
+.garden-item iframe{
+  position: absolute;
+  inset: 0;
+  width: var(--orig-w) !important;
+  height: var(--orig-h) !important;
+  border: none;
+  transform: scale(var(--scale)) !important;
+  transform-origin: top left !important;
+}
+
+/* Label y placeholder */
+.garden-item .label{
+  position:absolute; top:8px; left:8px;
+  background:rgba(255,255,255,.85);
+  padding:4px 8px; border-radius:4px;
+  font-size: clamp(8px,1.5vw,14px);
+  z-index:3;
+}
+.iframe-placeholder{
+  width: 100%;
+  height: 100%;
+  position:absolute; inset:0;
+  display:grid; place-items:center;
+  cursor:pointer; overflow:hidden; z-index:2;
+  background:#ededed; 
+}
+.iframe-placeholder img.thumb{
+  width:100%; height:100%; object-fit:cover; display:block; filter:brightness(.95);
+}
+.iframe-placeholder .ph-cta{
+  padding:8px 14px; background:#f0f0f0; border:1px solid #313131; border-radius:10px;
+  font:12px 'JetBrains Mono', monospace;
+}
+.garden-item.playing .iframe-placeholder{ background:transparent; border-color:transparent; }
+.garden-item.playing .iframe-placeholder .ph-cta{ opacity:0; pointer-events:none; }

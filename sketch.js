@@ -12,7 +12,7 @@
 // 
 // //TAKE IT OUT/ COMMENT IF YOU WANT TO SEE CONSOLE LOGS 
 
-const DEBUG = false;
+const DEBUG = true;
 if (!DEBUG) {
   console.log = () => {};
   console.warn = () => {};
@@ -224,6 +224,50 @@ if (alreadyExists && existingData.growthConfig) {
 
 console.log('Saving data to Firestore:', JSON.stringify(data, null, 2));
 await docRef.set(data, { merge: true });
+
+try {
+  // 1) Asegura que el canvas está actualizado (por si hay draw diferido)
+  if (typeof computeGridPoints === 'function') computeGridPoints();
+  if (typeof drawSeed === 'function') drawSeed();
+  if (typeof redraw === 'function') redraw();
+
+  // 2) Tomar el canvas actual y reducirlo (máx 600 px de ancho)
+  const srcCanvas =
+    (window.canvas && window.canvas.elt) ||
+    document.querySelector('#canvas-wrapper canvas') ||
+    document.querySelector('canvas');
+
+  if (srcCanvas) {
+    const maxW = 600;
+    const ratio = srcCanvas.width / srcCanvas.height;
+    const dstW = Math.min(maxW, srcCanvas.width);
+    const dstH = Math.round(dstW / ratio);
+
+    const off = document.createElement('canvas');
+    off.width = dstW; off.height = dstH;
+    const ctx = off.getContext('2d');
+    ctx.drawImage(srcCanvas, 0, 0, dstW, dstH);
+
+    // 3) A blob (JPEG liviano) y subir a Storage
+    const blob = await new Promise(res => off.toBlob(b => res(b), 'image/jpeg', 0.85));
+    const storage = firebase.storage(); // compat
+    const ref = storage.ref().child(`thumbs/${seed}.jpg`);
+    await ref.put(blob);
+    const url = await ref.getDownloadURL();
+
+    // 4) Guardar la URL del thumbnail en el doc
+    await docRef.set({
+      thumbUrl: url,
+      updatedAt: firebase.firestore.Timestamp.now()
+    }, { merge: true });
+
+    console.log('✅ Thumbnail guardado:', url);
+  } else {
+    console.warn('No encontré canvas para generar thumbnail.');
+  }
+} catch (e) {
+  console.warn('No se pudo generar/subir thumbnail:', e);
+}
 
 console.log(`✅ Auto-saved seed ${seed} to Firestore`);
 hasUnsavedChanges = false;

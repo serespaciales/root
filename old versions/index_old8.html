@@ -274,27 +274,6 @@
   
 </div>
 
-<!-- 🌱 What's new popup — shown once per version via localStorage -->
-<div id="whatsnew-popup" class="popup" style="display:none;">
-  <div class="popup-header">
-    <div class="header-pill">root 1.0</div>
-    <button class="popup-close" id="whatsnew-close">×</button>
-  </div>
-  <div class="popup-content whatsnew-content">
-    <p class="whatsnew-title">welcome to root 1.0</p>
-    <p class="whatsnew-sub">here's what's new in this update</p>
-    <ul class="whatsnew-list">
-      <li><span class="whatsnew-tag tag-new">new</span> word tool — place a word in any cell, press T</li>
-      <li><span class="whatsnew-tag tag-new">new</span> garden redesign — filter by growth, live previews</li>
-      <li><span class="whatsnew-tag tag-fix">fix</span> page no longer freezes on first load</li>
-      <li><span class="whatsnew-tag tag-fix">fix</span> harvest viewer loads seeds correctly</li>
-      <li><span class="whatsnew-tag tag-fix">fix</span> layers panel now scrolls</li>
-      <li><span class="whatsnew-tag tag-fix">fix</span> consistent Firebase + p5 versions across all pages</li>
-    </ul>
-    <a class="whatsnew-link" href="https://github.com/serespaciales/root" target="_blank" rel="noopener">full changelog</a>
-  </div>
-</div>
-
 <!-- 🌱 Growth popup (outside of bottom-buttons container) -->
 <div id="growth-popup" class="popup popup-growth" style="display: none;">
   <div class="popup-header">
@@ -342,7 +321,7 @@
     <div class="popup-content info-text">
       <hr class="info-dividertop">
       <h2 class="info-title">root</h2>
-      <div class="info-subtitle">***VER. 1.0***</div>
+      <div class="info-subtitle">***BETA***</div>
       <div class="info-subtitle">Under GNU GPL v2.0</div>
       <hr class="info-dividerbottom">
 
@@ -552,36 +531,6 @@
         document.querySelectorAll('.lang-content').forEach(div => {
           div.style.display = div.dataset.lang === lang ? 'block' : 'none';
         });
-      });
-    });
-  </script>
-
-  <script>
-    // Show what's new popup once per version
-    const WHATS_NEW_KEY = 'root_seen_v1';
-    document.addEventListener('DOMContentLoaded', () => {
-      const popup  = document.getElementById('whatsnew-popup');
-      const close  = document.getElementById('whatsnew-close');
-      if (!popup || !close) return;
-
-      if (!localStorage.getItem(WHATS_NEW_KEY)) {
-        // Small delay so the canvas and palette settle first
-        setTimeout(() => {
-          popup.style.display = 'flex';
-        }, 800);
-      }
-
-      close.addEventListener('click', () => {
-        popup.style.display = 'none';
-        localStorage.setItem(WHATS_NEW_KEY, '1');
-      });
-
-      // also close on outside click
-      popup.addEventListener('click', (e) => {
-        if (e.target === popup) {
-          popup.style.display = 'none';
-          localStorage.setItem(WHATS_NEW_KEY, '1');
-        }
       });
     });
   </script>

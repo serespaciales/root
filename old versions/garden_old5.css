@@ -62,15 +62,19 @@ body {
 
 .title-root {
   font-family: var(--font);
-  font-size: clamp(14px, 2vw, 20px);
+  font-size: clamp(32px, 8vw, 96px);
   font-weight: 300;
   color: var(--black);
   letter-spacing: -0.02em;
+
+  /* text scroll animation */
+  display: inline-block;
+  animation: titleDrift 18s ease-in-out infinite alternate;
 }
 
 .title-slash {
   font-family: var(--font);
-  font-size: clamp(14px, 2vw, 20px);
+  font-size: clamp(20px, 5vw, 60px);
   font-weight: 300;
   color: var(--black);
   opacity: 0.3;
@@ -78,13 +82,21 @@ body {
 
 .title-garden {
   font-family: var(--font);
-  font-size: clamp(14px, 2vw, 20px);
+  font-size: clamp(32px, 8vw, 96px);
   font-weight: 300;
   color: var(--black);
   letter-spacing: -0.02em;
+
+  /* different drift speed */
+  display: inline-block;
+  animation: titleDrift 24s ease-in-out infinite alternate-reverse;
 }
 
-
+@keyframes titleDrift {
+  0%   { letter-spacing: -0.02em; }
+  50%  { letter-spacing: 0.08em; }
+  100% { letter-spacing: -0.01em; }
+}
 
 #garden-description {
   font-family: var(--font);

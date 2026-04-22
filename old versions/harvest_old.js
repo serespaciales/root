@@ -364,44 +364,27 @@ function onLookup() {
   window.history.replaceState({}, '', u);
 
   if (refreshTimer) clearInterval(refreshTimer);
-  waitForSeedsCol(() => fetchAndRenderSeed(seedId));
+  fetchAndRenderSeed(seedId);
 }
 
 
 // ========= Setup event listeners ========= //
-
-/**
- * waitForSeedsCol(cb)
- * Polls until window.seedsCol is defined (Firebase finished init),
- * then calls cb(). Gives up after ~10 seconds.
- */
-function waitForSeedsCol(cb, attempts = 40, interval = 250) {
-  if (window.seedsCol) { cb(); return; }
-  if (attempts <= 0) {
-    console.error('Timed out waiting for seedsCol');
-    const err = document.getElementById('seedError');
-    if (err) err.textContent = 'Error: Firebase not available.';
-    return;
-  }
-  setTimeout(() => waitForSeedsCol(cb, attempts - 1, interval), interval);
-}
-
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOMContentLoaded');
   const lookupBtn = document.getElementById('lookupBtn');
-  if (lookupBtn) {
-    lookupBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      onLookup();
-    });
-  }
+if (lookupBtn) {
+  lookupBtn.addEventListener('click', (e) => {
+    e.preventDefault(); // 🔒 Detiene el refresh del formulario
+    onLookup();         // 🚀 Llama tu función de búsqueda
+  });
+}
+
 
   const urlParams = new URLSearchParams(window.location.search);
   const seedId = urlParams.get('seed');
   if (seedId && /^[A-Za-z0-9]{7}$/.test(seedId)) {
     document.getElementById('seedId').value = seedId;
-    // Wait for Firebase to be ready before fetching
-    waitForSeedsCol(() => fetchAndRenderSeed(seedId));
+    fetchAndRenderSeed(seedId);
   }
 });
 
@@ -529,57 +512,6 @@ function renderVisuals(layers = null, options = { bloom: false }) {
           applyBloomExpansion(visual);
         }
       
-      } else if (visual.type === 'word' && visual.word) {
-        const wv = visual.word;
-        let col     = wv.color  || '#313131';
-        let bg      = wv.bg     || '#ededed';
-        let sizePct = wv.sizePct || 70;
-        let amp     = typeof wv.breathAmplitude === 'number' ? wv.breathAmplitude : 0;
-
-        if (useBloom) {
-          const { sun = 0, water = 0, vitamins = 0 } = getFrameIntensities();
-          // sun shifts text color hue
-          if (sun > 0 && typeof applySunBurnEffect === 'function') {
-            const burnt = applySunBurnEffect([col], sun);
-            col = (typeof burnt[0] === 'string') ? burnt[0] : color(burnt[0]).toString('#rrggbb');
-          }
-          // vitamins boost size
-          sizePct = sizePct * (1 + vitamins * 0.3);
-          // water increases breath
-          amp = amp + water * 0.3;
-        }
-
-        const font    = wv.font    || 'JetBrains Mono, monospace';
-        const align   = wv.align   || 'center';
-        const freq    = typeof wv.breathSpeed === 'number' ? wv.breathSpeed : 1;
-        const phase   = typeof wv.breathPhase === 'number' ? wv.breathPhase : 0;
-        const content = wv.content || '';
-
-        const tSec  = millis() / 1000;
-        const breath = 1 + Math.sin(TWO_PI * freq * tSec + phase) * amp;
-        let fs = Math.max(6, (cellH * sizePct / 100) * breath);
-
-        // background
-        push();
-        noStroke();
-        fill(color(bg));
-        rect(0, 0, cellW, cellH);
-
-        // auto-fit
-        textFont(font);
-        textSize(fs);
-        while (fs > 6 && textWidth(content) > cellW * 0.9) {
-          fs -= 1;
-          textSize(fs);
-        }
-
-        const tx = align === 'left' ? cellW * 0.05 : align === 'right' ? cellW * 0.95 : cellW / 2;
-        const ta = align === 'left' ? LEFT : align === 'right' ? RIGHT : CENTER;
-        fill(color(col));
-        textAlign(ta, CENTER);
-        text(content, tx, cellH / 2);
-        pop();
-
       }  else if (visual.type === 'shape' && visual.shape) {
         const s = visual.shape;
       

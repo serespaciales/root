@@ -83,27 +83,6 @@ function drawStaticPreview(canvas, data) {
         ctx.font = `${size}px ${visual.text.font || 'monospace'}`;
         ctx.fillStyle = visual.text.color || '#313131';
         ctx.fillText(visual.text.content, x + 4, y + size + 4);
-
-      } else if (visual.type === 'word' && visual.word?.content) {
-        const wv = visual.word;
-        // background
-        ctx.fillStyle = wv.bg || '#ededed';
-        ctx.fillRect(x, y, cellW, cellH);
-        // auto-fit font size
-        let fs = Math.max(4, cellH * (wv.sizePct || 70) / 100);
-        ctx.font = `300 ${fs}px ${wv.font || 'JetBrains Mono, monospace'}`;
-        while (fs > 4 && ctx.measureText(wv.content).width > cellW * 0.9) {
-          fs -= 1;
-          ctx.font = `300 ${fs}px ${wv.font || 'JetBrains Mono, monospace'}`;
-        }
-        ctx.fillStyle = wv.color || '#313131';
-        ctx.textAlign = wv.align || 'center';
-        ctx.textBaseline = 'middle';
-        const tx = wv.align === 'left' ? x + cellW * 0.05
-                 : wv.align === 'right' ? x + cellW * 0.95
-                 : x + cellW / 2;
-        ctx.fillText(wv.content, tx, y + cellH / 2);
-        ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; // reset
       }
     });
   });

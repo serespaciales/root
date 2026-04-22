@@ -20,7 +20,15 @@ function logisticEase(x, k = 12) {
   return (y - L0) / (L1 - L0);
 }
 
-// NOTE: normSun / normVit calculations belong inside render functions (removed stray top-level code)
+const normSun = logisticEase(constrain(growth.sunGrid[row][col] / 10, 0, 1));
+// supongamos que vitamins va de 0 a 10 → normalizamos:
+const normVit = constrain(growth.vitamins / 10, 0, 1);
+
+// Saturación: del valor base hasta +50% según vit
+s = constrain(s + map(normVit, 0, 1, 0, 50), 0, 100);
+
+// Brillo: del valor base hasta +30% según vit
+b = constrain(b + map(normVit, 0, 1, 0, 30), 0, 100);
 
 //======================GROWTH CURVE===================
 

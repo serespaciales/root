@@ -1,31 +1,65 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-  <title>Garden of Fully Grown Seeds</title>
+  <title>root — garden</title>
+
+  <!-- Google Fonts — a broad set available for the text tool -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400&family=Space+Grotesk:wght@300;400&family=Playfair+Display:ital,wght@0,400;1,400&family=DM+Mono:wght@300;400&family=Instrument+Serif:ital@0;1&family=Syne:wght@400;700&family=Fragment+Mono&family=Unbounded:wght@300;400&family=Libre+Baskerville:ital@0;1&family=Space+Mono&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="garden.css">
 </head>
 <body>
-<div id="loading-overlay">
-  <div class="loader-text">Loading seeds…</div>
-</div>
 
-<div id="buttonsgarden">
+  <!-- Loading overlay -->
+  <div id="loading-overlay">
+    <div class="loader-text">loading seeds…</div>
+  </div>
+
+  <!-- Header -->
+  <header id="garden-header">
+    <div id="garden-title">
+      <span class="title-root">root</span>
+      <span class="title-slash">/</span>
+      <span class="title-garden">garden</span>
+    </div>
+    <p id="garden-description">
+      every seed planted in root lives here.<br>
+      each one is a unique visual composition that grows over time.
+    </p>
+
+    <!-- Filter bar -->
+    <div id="filter-bar">
+      <button class="filter-btn active" data-filter="all">all</button>
+      <button class="filter-btn" data-filter="grown">with growth</button>
+      <button class="filter-btn" data-filter="nogrow">no growth yet</button>
+    </div>
+
+    <!-- Seed count -->
+    <div id="seed-count"></div>
+  </header>
+
+  <!-- Grid -->
+  <div id="garden-grid"></div>
+
+  <!-- Nav pills -->
+  <div id="buttonsgarden">
     <div id="root-garden"    class="gridpill">root</div>
     <div id="harvest-garden" class="gridpill">harvest</div>
     <div id="garden-garden"  class="gridpill">garden</div>
   </div>
 
-  <div id="garden-grid"></div>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
-  <!-- Dependencias externas -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+  <!-- p5 + fillgradient for static preview canvas -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
   <script src="https://unpkg.com/p5.fillgradient@0.1.2/dist/p5.fillGradient.min.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-  <!-- Lógica de seeds y render -->
   <script src="common.js"></script>
   <script src="garden.js"></script>
 </body>

@@ -157,20 +157,6 @@ async function saveToFirestore() {
           };
         }
 
-        if (visual.word) {
-          visual.word = {
-            content:        typeof visual.word.content  === 'string' ? visual.word.content  : 'root',
-            font:           typeof visual.word.font     === 'string' ? visual.word.font     : 'JetBrains Mono, monospace',
-            color:          typeof visual.word.color    === 'string' ? visual.word.color    : '#313131',
-            bg:             typeof visual.word.bg       === 'string' ? visual.word.bg       : '#ededed',
-            align:          typeof visual.word.align    === 'string' ? visual.word.align    : 'center',
-            sizePct:        typeof visual.word.sizePct  === 'number' ? visual.word.sizePct  : 70,
-            breathAmplitude:typeof visual.word.breathAmplitude === 'number' ? visual.word.breathAmplitude : 0,
-            breathSpeed:    typeof visual.word.breathSpeed     === 'number' ? visual.word.breathSpeed     : 1,
-            breathPhase:    typeof visual.word.breathPhase     === 'number' ? visual.word.breathPhase     : 0
-          };
-        }
-
         acc[key] = visual;
         return acc;
       }, {})
@@ -462,31 +448,9 @@ function setup() {
     return L;
   };
 
-  // 3. Fetch inicial a Firestore — wait for Firebase to be ready first
+  // 3. Fetch inicial a Firestore (tamaño + contenido)
   const container = select('#canvas-wrapper').elt;
-
-  function waitForSeedsColSketch(cb, attempts = 40, interval = 250) {
-    if (window.seedsCol) { cb(); return; }
-    if (attempts <= 0) {
-      console.error('Timed out waiting for seedsCol in setup()');
-      // Fallback: start with a blank seed so the page doesn't freeze
-      canvas = createCanvas(container.clientWidth, container.clientHeight).parent('canvas-wrapper');
-      gradientBuffer = createGraphics(width, height);
-      columnPositions = Array.from({ length: 3 }, (_, i) => (i * width) / 2);
-      rowPositions    = Array.from({ length: 3 }, (_, i) => (i * height) / 2);
-      computeGridPoints();
-      window.layers = [initializeDefaultLayer()];
-      window.activeLayer = window.layers[0];
-      if (MODE === 'edit') renderLayersUI();
-      redraw();
-      loop();
-      return;
-    }
-    setTimeout(() => waitForSeedsColSketch(cb, attempts - 1, interval), interval);
-  }
-
-  waitForSeedsColSketch(() => {
-  window.seedsCol.doc(seed).get().then(doc => {
+  seedsCol.doc(seed).get().then(doc => {
     let rows = 6, cols = 6;
     let w = container.clientWidth;
     let h = container.clientHeight;
@@ -732,7 +696,6 @@ if (data.locked) {
     redraw();
     loop();
   });
-  }); // end waitForSeedsColSketch
 
   // 5. Inicializaciones UI que no dependen de load
   setupGradientColorInputs();
@@ -1087,12 +1050,8 @@ if (visual.type === 'gradient' && visual.colors?.length >= 2) {
   fillGradient('linear', { from: [0, -h * o], to: [0, h * (2 - o)], steps: s }, drawingContext);
   drawingContext.fillRect(0, 0, w, h);
   pop();
-}
-
-      else if (visual.type === 'word' && visual.word) {
-        drawWordCell(x, y, w, h, visual.word);
-      }
-
+} 
+      
       else if (visual.type === "text" && visual.text) {
         const wCells = visual.w || 1;
         const hCells = visual.h || 1;
@@ -1291,55 +1250,6 @@ if (visual.type === 'gradient' && visual.colors?.length >= 2) {
   }
 }
 
-
-// ─── Word text cell renderer ────────────────────────────────────────────────
-function drawWordCell(x, y, w, h, wordVisual) {
-  const wv = wordVisual;
-  const content   = wv.content   || '';
-  const font      = wv.font      || 'JetBrains Mono, monospace';
-  const col       = wv.color     || '#313131';
-  const bg        = wv.bg        || '#ededed';
-  const align     = wv.align     || 'center';
-  const sizePct   = wv.sizePct   || 70;   // % of cell height
-  const amp       = typeof wv.breathAmplitude === 'number' ? wv.breathAmplitude : 0;
-  const freq      = typeof wv.breathSpeed     === 'number' ? wv.breathSpeed     : 1;
-  const phase     = typeof wv.breathPhase     === 'number' ? wv.breathPhase     : 0;
-
-  // background fill
-  push();
-  translate(x, y);
-  noStroke();
-  fill(color(bg));
-  rect(0, 0, w, h);
-
-  // auto-fit font size: start at sizePct% of cell height, shrink until it fits width
-  const tSec = (typeof animationsPaused !== 'undefined' && animationsPaused && typeof pausedMillis === 'number')
-    ? pausedMillis / 1000 : millis() / 1000;
-  const breath = 1 + Math.sin(TWO_PI * freq * tSec + phase) * amp;
-
-  let fs = Math.max(6, (h * sizePct / 100) * breath);
-  textFont(font);
-  textSize(fs);
-  // shrink until word fits
-  while (fs > 6 && textWidth(content) > w * 0.9) {
-    fs -= 1;
-    textSize(fs);
-  }
-
-  // align
-  const tx = align === 'left' ? w * 0.05
-           : align === 'right' ? w * 0.95
-           : w / 2;
-  const ta = align === 'left' ? LEFT
-           : align === 'right' ? RIGHT
-           : CENTER;
-
-  fill(color(col));
-  noStroke();
-  textAlign(ta, CENTER);
-  text(content, tx, h / 2);
-  pop();
-}
 
 function isMouseOverUI() {
   return isClickOnUI();
@@ -1974,34 +1884,6 @@ function drawOnCellUnderMouse() {
             saveVisuals();
             debounceSaveToFirestore();
 
-          } else if (activeTool === "word") {
-            const content   = document.getElementById('word-content')?.value  || 'root';
-            const font      = document.getElementById('word-font')?.value      || 'JetBrains Mono, monospace';
-            const col       = document.getElementById('word-color')?.value     || '#313131';
-            const bg        = document.getElementById('word-bg')?.value        || '#ededed';
-            const align     = document.getElementById('word-align')?.value     || 'center';
-            const sizePct   = parseFloat(document.getElementById('word-size')?.value)        || 70;
-            const breathAmp = parseFloat(document.getElementById('word-breath')?.value)      || 0;
-            const breathSpd = parseFloat(document.getElementById('word-breath-speed')?.value)|| 1;
-            visuals[key] = {
-              type: 'word',
-              word: {
-                content,
-                font,
-                color: col,
-                bg,
-                align,
-                sizePct,
-                breathAmplitude: breathAmp,
-                breathSpeed:     breathSpd,
-                breathPhase:     random(0, TWO_PI)
-              }
-            };
-            markChanges();
-            saveVisuals();
-            debounceSaveToFirestore();
-            redraw();
-
           } else if (activeTool === "erase") {
             delete visuals[key];
             markChanges();
@@ -2575,14 +2457,6 @@ function keyPressed() {
     return false;
   }
 
-  // T: Word tool
-  if (k === 't') {
-    activeTool = 'word';
-    selectToolButton('word');
-    console.log('Word tool selected');
-    return false;
-  }
-
   // Esc: Close popups, deselect
   if (keyCode === ESCAPE) {
     document.querySelectorAll('.popup').forEach(p => p.style.display = 'none');
@@ -2669,8 +2543,14 @@ if (scaleSlider) {
   });
 }
 
-const imageScaleValue = document.getElementById("image-scale-value");
-// imageScaleSlider is assigned below at line ~2614; this listener is safely re-attached there
+const imageScaleValue  = document.getElementById("image-scale-value");
+imageScaleSlider.addEventListener("input", () => {
+  const visuals = window.activeLayer.visuals; // <--- IMPORTANTE
+  if (activeTool === "image" && activeImageEdit && visuals[activeImageEdit]) {
+    visuals[activeImageEdit].scale = parseFloat(imageScaleSlider.value);
+    saveVisuals(); // si quieres guardar el cambio
+  }
+});
 
 
 function selectImageVisual(key) {

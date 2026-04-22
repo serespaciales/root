@@ -462,31 +462,9 @@ function setup() {
     return L;
   };
 
-  // 3. Fetch inicial a Firestore — wait for Firebase to be ready first
+  // 3. Fetch inicial a Firestore (tamaño + contenido)
   const container = select('#canvas-wrapper').elt;
-
-  function waitForSeedsColSketch(cb, attempts = 40, interval = 250) {
-    if (window.seedsCol) { cb(); return; }
-    if (attempts <= 0) {
-      console.error('Timed out waiting for seedsCol in setup()');
-      // Fallback: start with a blank seed so the page doesn't freeze
-      canvas = createCanvas(container.clientWidth, container.clientHeight).parent('canvas-wrapper');
-      gradientBuffer = createGraphics(width, height);
-      columnPositions = Array.from({ length: 3 }, (_, i) => (i * width) / 2);
-      rowPositions    = Array.from({ length: 3 }, (_, i) => (i * height) / 2);
-      computeGridPoints();
-      window.layers = [initializeDefaultLayer()];
-      window.activeLayer = window.layers[0];
-      if (MODE === 'edit') renderLayersUI();
-      redraw();
-      loop();
-      return;
-    }
-    setTimeout(() => waitForSeedsColSketch(cb, attempts - 1, interval), interval);
-  }
-
-  waitForSeedsColSketch(() => {
-  window.seedsCol.doc(seed).get().then(doc => {
+  seedsCol.doc(seed).get().then(doc => {
     let rows = 6, cols = 6;
     let w = container.clientWidth;
     let h = container.clientHeight;
@@ -732,7 +710,6 @@ if (data.locked) {
     redraw();
     loop();
   });
-  }); // end waitForSeedsColSketch
 
   // 5. Inicializaciones UI que no dependen de load
   setupGradientColorInputs();

@@ -1,0 +1,103 @@
+:root{
+  /* Escala global del tamaño visible. Sube/baja sin tocar JS. */
+  --scale: 0.50; /* 0.50 = mitad del canvas original */
+}
+
+/* Fondo */
+body { background:#fff; }
+
+/* Pills flotantes */
+#buttonsgarden{
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 10px;
+  z-index: 9999;
+  align-items: flex-end;
+}
+.gridpill{
+  font-family:'JetBrains Mono', monospace;
+  padding: 3px 14px;
+  border-bottom-left-radius:12px;
+  border-top-right-radius:12px;
+  background: rgba(49,49,49,.8);
+  color:#cbc4c2;
+  font-size: clamp(8px,1.5vw,12px);
+}
+
+/* Loading overlay */
+#loading-overlay{
+  position:fixed; inset:0;
+  background:#ededed;
+  display:flex; align-items:center; justify-content:center;
+  z-index:9998;
+}
+.loader-text{
+  margin-bottom:14px; padding:3px 14px;
+  border-bottom-left-radius:12px; border-top-right-radius:12px;
+  background: rgba(49,49,49,.8); color:#cbc4c2;
+  font: 14px 'JetBrains Mono', monospace;
+}
+
+/* ===== Grid: EXACTAMENTE 2 columnas, sin estirar items ===== */
+#garden-grid{
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin: 0 auto;
+  justify-items: center;   /* no estires el contenido */
+  align-items: start;
+}
+
+/* ===== Tile =====
+   - Ancho = min(columna, canvasW * scale) => sin upscaling ni scroll.
+   - Alto desde la relación real (--ar = W/H).
+   - W/H originales se pasan por JS a --orig-w / --orig-h. */
+.garden-item{
+  position: relative;
+  width: min(100%, calc(var(--orig-w) * var(--scale)));
+  overflow: hidden;
+  border: 1px solid #313131;
+  border-radius: 0px;
+  border-top-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+  background: #f9f9f9;
+}
+
+/* El iframe rellena el tile 1:1 (sin transform ni calc) */
+.garden-item iframe{
+  position: absolute;
+  inset: 0;
+  width: var(--orig-w) !important;
+  height: var(--orig-h) !important;
+  border: none;
+  transform: scale(var(--scale)) !important;
+  transform-origin: top left !important;
+}
+
+/* Label y placeholder */
+.garden-item .label{
+  position:absolute; top:8px; left:8px;
+  background:rgba(255,255,255,.85);
+  padding:4px 8px; border-radius:4px;
+  font-size: clamp(8px,1.5vw,14px);
+  z-index:3;
+}
+.iframe-placeholder{
+  width: 100%;
+  height: 100%;
+  position:absolute; inset:0;
+  display:grid; place-items:center;
+  cursor:pointer; overflow:hidden; z-index:2;
+  background:#ededed; 
+}
+.iframe-placeholder img.thumb{
+  width:100%; height:100%; object-fit:cover; display:block; filter:brightness(.95);
+}
+.iframe-placeholder .ph-cta{
+  padding:8px 14px; background:#f0f0f0; border:1px solid #313131; border-radius:10px;
+  font:12px 'JetBrains Mono', monospace;
+}
+.garden-item.playing .iframe-placeholder{ background:transparent; border-color:transparent; }
+.garden-item.playing .iframe-placeholder .ph-cta{ opacity:0; pointer-events:none; }

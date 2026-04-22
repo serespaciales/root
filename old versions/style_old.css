@@ -340,16 +340,9 @@ button.disabled {
 #layer-panel { margin: 10px; }
 
 #layers-list {
-  max-height: 180px;
+  height: 100%;
   overflow-y: auto;
   background: var(--grey);
-}
-
-#layer-panel h3 {
-  font-family: var(--font);
-  font-size: var(--size);
-  font-weight: 300;
-  color: var(--black);
 }
 
 /* === Manual resize controls ================================ */
@@ -747,92 +740,3 @@ body.hide-ui .popup,
 body.hide-ui #bottom-buttons,
 body.hide-ui .fullscreen-btn,
 body.hide-ui .resizer.top-right { display: none !important; }
-
-/* === What's new popup ====================================== */
-#whatsnew-popup {
-  position: fixed;
-  bottom: 60px;
-  right: 60px;
-  top: auto;
-  left: auto;
-  z-index: 2000;
-  width: 280px;
-  display: flex;
-  flex-direction: column;
-}
-
-.whatsnew-content {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px;
-}
-
-.whatsnew-title {
-  font-family: var(--font);
-  font-size: clamp(14px, 2vw, 18px);
-  font-weight: 300;
-  color: var(--black);
-  line-height: 1.2;
-}
-
-.whatsnew-sub {
-  font-family: var(--font);
-  font-size: var(--size);
-  font-weight: 300;
-  color: var(--black);
-  opacity: 0.5;
-}
-
-.whatsnew-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 0;
-  margin: 0;
-}
-
-.whatsnew-list li {
-  font-family: var(--font);
-  font-size: var(--size);
-  font-weight: 300;
-  color: var(--black);
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  line-height: 1.5;
-}
-
-.whatsnew-tag {
-  font-family: var(--font);
-  font-size: var(--size);
-  font-weight: 300;
-  padding: 1px 6px;
-  border: 1px solid var(--black);
-  border-top-right-radius: 6px;
-  border-bottom-left-radius: 6px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.whatsnew-list li:has(.whatsnew-tag[class="whatsnew-tag"]:first-child) .whatsnew-tag {
-  background: var(--grey);
-}
-
-/* new tag = yellow, fix tag = grey */
-.whatsnew-tag.tag-fix { background: var(--grey); }
-.whatsnew-tag.tag-new { background: var(--yellow); }
-
-.whatsnew-link {
-  font-family: var(--font);
-  font-size: var(--size);
-  font-weight: 300;
-  color: var(--black);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  align-self: flex-start;
-  opacity: 0.5;
-  transition: opacity 0.15s;
-}
-.whatsnew-link:hover { opacity: 1; }

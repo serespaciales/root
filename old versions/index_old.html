@@ -4,10 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>root</title>
-  <!-- Google Fonts — available in the text tool -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400&family=Space+Grotesk:wght@300;400&family=Playfair+Display:ital,wght@0,400;1,400&family=DM+Mono:wght@300;400&family=Instrument+Serif:ital@0;1&family=Syne:wght@400;700&family=Fragment+Mono&family=Unbounded:wght@300;400&family=Libre+Baskerville:ital@0;1&family=Space+Mono&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
 </head>
@@ -75,10 +72,7 @@
           </button>  
           <button class="tool-btn" data-tool="shape" data-tippy-content="Draw shape">
             <img src="tool-icons/R_shape-off.svg" alt="" />
-          </button>
-          <button class="tool-btn" data-tool="word" data-tippy-content="Word text">
-            <span style="font-family:var(--font);font-size:10px;font-weight:300;color:var(--black);line-height:1;">Aa</span>
-          </button>
+          </button> 
           <button class="tool-btn" data-tool="erase" data-tippy-content="Eraser">
             <img src="tool-icons/R_erase-off.svg" alt="" />
           </button>
@@ -145,38 +139,6 @@
             <input type="number" min="1" max="100" step="1" id="text-lineheight" value="14">
             <label for="text-kerning">Letter spacing</label>
             <input type="range" min="0" max="3" step="0.1" id="text-kerning" value="0.05">
-          </div>
-          <div class="tool-options" id="options-word">
-            <label>Word
-              <input type="text" id="word-content" value="root" maxlength="24" placeholder="type a word…" style="margin-top:4px;">
-            </label>
-            <label>Font
-              <select id="word-font">
-                <option value="JetBrains Mono, monospace">JetBrains Mono</option>
-                <option value="monospace">Monospace</option>
-                <option value="serif">Serif</option>
-                <option value="sans-serif">Sans Serif</option>
-                <option value="cursive">Cursive</option>
-              </select>
-            </label>
-            <label>Color <input type="color" id="word-color" value="#313131"></label>
-            <label>Background <input type="color" id="word-bg" value="#ededed"></label>
-            <label>Align
-              <select id="word-align">
-                <option value="center">center</option>
-                <option value="left">left</option>
-                <option value="right">right</option>
-              </select>
-            </label>
-            <label>Size
-              <input type="range" id="word-size" min="10" max="100" value="70">
-            </label>
-            <label>Breath
-              <input type="range" id="word-breath" min="0" max="0.5" step="0.01" value="0">
-            </label>
-            <label>Breath speed
-              <input type="range" id="word-breath-speed" min="0" max="3" step="0.1" value="1">
-            </label>
           </div>
           <div class="tool-options" id="options-image">
             <label>Subir imagen</label><br>
@@ -274,27 +236,6 @@
   
 </div>
 
-<!-- 🌱 What's new popup — shown once per version via localStorage -->
-<div id="whatsnew-popup" class="popup" style="display:none;">
-  <div class="popup-header">
-    <div class="header-pill">root 1.0</div>
-    <button class="popup-close" id="whatsnew-close">×</button>
-  </div>
-  <div class="popup-content whatsnew-content">
-    <p class="whatsnew-title">welcome to root 1.0</p>
-    <p class="whatsnew-sub">here's what's new in this update</p>
-    <ul class="whatsnew-list">
-      <li><span class="whatsnew-tag tag-new">new</span> word tool — place a word in any cell, press T</li>
-      <li><span class="whatsnew-tag tag-new">new</span> garden redesign — filter by growth, live previews</li>
-      <li><span class="whatsnew-tag tag-fix">fix</span> page no longer freezes on first load</li>
-      <li><span class="whatsnew-tag tag-fix">fix</span> harvest viewer loads seeds correctly</li>
-      <li><span class="whatsnew-tag tag-fix">fix</span> layers panel now scrolls</li>
-      <li><span class="whatsnew-tag tag-fix">fix</span> consistent Firebase + p5 versions across all pages</li>
-    </ul>
-    <a class="whatsnew-link" href="https://github.com/serespaciales/root" target="_blank" rel="noopener">full changelog</a>
-  </div>
-</div>
-
 <!-- 🌱 Growth popup (outside of bottom-buttons container) -->
 <div id="growth-popup" class="popup popup-growth" style="display: none;">
   <div class="popup-header">
@@ -342,7 +283,7 @@
     <div class="popup-content info-text">
       <hr class="info-dividertop">
       <h2 class="info-title">root</h2>
-      <div class="info-subtitle">***VER. 1.0***</div>
+      <div class="info-subtitle">***BETA***</div>
       <div class="info-subtitle">Under GNU GPL v2.0</div>
       <hr class="info-dividerbottom">
 
@@ -354,13 +295,13 @@
         </p>
 
         <p class="info-body">
-          root is free & open-source. The repository will be public soon at <a href="https://github.com/serespaciales/root" target="_blank">github.com/serespaciales/root</a>.
+          root is free & open-source. Click <a href="https://github.com/serespaciales/root" target="_blank">here</a>, if you would like to contribute to the tool.
         </p>
 
         <h3 class="info-section-title">How to Start</h3>
         <ul class="info-list">
           <li>*Press H to enter the canvas, press H again to return here.</li>
-          <li>*Select a tool (gradient, shape or text).</li>
+          <li>*Select a tool (gradient or shape).</li>
           <li>*Draw or click on modules to add visuals.</li>
           <li>*Use water, sun or vitamins to grow and transform your creation.</li>
           <li>*Save, export or share any stage using your unique seed.</li>
@@ -380,13 +321,13 @@
           <li><b>*What is root?</b><br>
             A modular visual design tool where your compositions grow and evolve online.</li>
           <li><b>*Do I need to know design or programming?</b><br>
-            No. Root is made for everyone. just pick a tool and start creating.</li>
+            No. Root is made for everyone—just pick a tool and start creating.</li>
           <li><b>*How does growth work?</b><br>
             Each visual grows and transforms based on your actions and settings (water, sun, vitamins), thanks to algorithmic simulations that let you see every stage.</li>
           <li><b>*Can I download or share my creations?</b><br>
             Yes, you can save and download any version. Share your unique seed so others can remix your work.</li>
           <li><b>*What can I create in root?</b><br>
-            From generative art and branding to layouts, growth simulations. basically anything you can imagine!</li>
+            From generative art and branding to layouts, growth simulations, and more.</li>
           <li><b>*Is root free?</b><br>
             Yes, root is free for all users.</li>
           <li><b>*How are visuals saved?</b><br>
@@ -397,12 +338,11 @@
 
         <h3 class="info-section-title">Credits</h3>
         <ul class="info-list">
-          <li><b>root</b> is a project by <b>Ana María van Dierendonck</b>, created as part of her MDes thesis at the <b>Hochschule für Gestaltung und Kunst Basel (HGK)</b>, Design Department, 2025. Mentors: <em>Ted Davis, Jiri Oplatek, Bérénice Serra, Invar Torre-Hollaus</em>.
-          <li>Inspired by platforms like <a href="https://hydra.ojack.xyz/" target="_blank">Hydra</a> and <a href="https://teddavis.org/p5live/" target="_blank">P5lIVE</a>.</li>
+          <li><b>root</b> is a project by Ana María, inspired by platforms like <a href="https://hydra.ojack.xyz/" target="_blank">Hydra</a> and <a href="https://teddavis.org/p5live/" target="_blank">P5lIVE</a>.</li>
           <li>Thanks to the creative coding community and all who support open-source culture.</li>
           <li>root - Modular Poster Garden<br>
-          Copyright (C) 2025 Ana María van Dierendonck<br>
-          GNU General Public License v2.0 — <a href="https://www.gnu.org/licenses/" target="_blank">gnu.org/licenses</a><br>
+          Copyright (C) 2025<br>
+          This program is free software under the GNU General Public License. See https://www.gnu.org/licenses/<br>
           Contact: hello@seresworldwide.com</li>
         </ul>
       </div>
@@ -415,13 +355,13 @@
           </p>
         
           <p class="info-body">
-            root es libre y de código abierto. El repositorio estará público próximamente en <a href="https://github.com/serespaciales/root" target="_blank">github.com/serespaciales/root</a>.
+            root es libre y de código abierto. Haz clic <a href="https://github.com/serespaciales/root" target="_blank">aquí</a> si deseas contribuir a la herramienta. 
           </p>
         
           <h3 class="info-section-title">Cómo empezar</h3>
           <ul class="info-list">
             <li>*Accede al canvas presionando H, y vuelve a esta página presionando H de nuevo.</li>
-            <li>*Selecciona una herramienta (gradiente,forma o texto).</li>
+            <li>*Selecciona una herramienta (gradiente o forma).</li>
             <li>*Dibuja o haz clic sobre los módulos para agregar visuales.</li>
             <li>*Usa agua, sol o vitaminas para hacer crecer y transformar tu creación.</li>
             <li>*Guarda, exporta o comparte cualquier etapa usando tu seed único.</li>
@@ -442,13 +382,13 @@
             <li><b>*¿Qué es root?</b><br>
               Es una herramienta modular de diseño visual donde tus composiciones crecen y evolucionan en línea.</li>
             <li><b>*¿Necesito saber diseño o programación?</b><br>
-              No. root está pensado para todos. Elige una herramienta y comienza a crear.</li>
+              No. root está pensado para todos — solo elige una herramienta y comienza a crear.</li>
             <li><b>*¿Cómo funciona el crecimiento?</b><br>
               Cada visual crece y se transforma según las acciones y ajustes que realices (agua, sol, vitaminas, etc.), gracias a algoritmos y funciones de código que te permiten ver cada etapa del proceso.</li>
             <li><b>*¿Puedo descargar o compartir mis creaciones?</b><br>
               Sí, puedes guardar y descargar cualquier versión. También puedes compartir tu seed único para que otros vean o remixen tu trabajo.</li>
             <li><b>*¿Qué puedo crear en root?</b><br>
-              Desde identidades visuales y arte generativo hasta layouts experimentales, simulaciones de crecimiento. Tu imaginación es el límite! </li>
+              Desde identidades visuales y arte generativo hasta layouts experimentales, simulaciones de crecimiento y mucho más.</li>
             <li><b>*¿Es root gratuito?</b><br>
               Sí, root es gratis para todos los usuarios.</li>
             <li><b>*¿Cómo se guardan mis visuales?</b><br>
@@ -459,12 +399,13 @@
         
           <h3 class="info-section-title">Créditos</h3>
           <ul class="info-list">
-            <li><b>root</b> es un proyecto de <b>Ana María van Dierendonck</b>, creado como parte de su tesis de MDes en la <b>Hochschule für Gestaltung und Kunst (HGK)</b>, Departamento de Diseño, 2025. Mentores: <em>Ted Davis, Jiri Oplatek, Bérénice Serra, Invar Torre-Hollaus</em>. 
-            <li>Inspirado en plataformas como <a href="https://hydra.ojack.xyz/" target="_blank">Hydra</a> y <a href="https://teddavis.org/p5live/" target="_blank">P5lIVE</a>.</li>
+            <li><b>root</b> es un proyecto creado por Ana María, inspirado por plataformas como <a href="https://hydra.ojack.xyz/" target="_blank">Hydra</a> y <a href="https://teddavis.org/p5live/" target="_blank">P5lIVE</a>.</li>
             <li>Agradecimientos a la comunidad de creative coding y a quienes contribuyen a la cultura open-source.</li>
             <li>root - Modular Poster Garden<br><br>
-              Copyright (C) 2025 Ana María van Dierendonck<br><br>
-              GNU General Public License v2.0 — <a href="https://www.gnu.org/licenses/" target="_blank">gnu.org/licenses</a><br><br>
+              Copyright (C) 2025<br><br>
+              Este programa es software libre; puedes redistribuirlo y/o modificarlo bajo los términos de la Licencia Pública General GNU publicada por la Free Software Foundation; ya sea la versión 2 de la Licencia, o (cuando así lo decidas) cualquier versión posterior.<br><br>
+              Este programa se distribuye con la esperanza de que sea útil, pero SIN NINGUNA GARANTÍA; sin incluso la garantía implícita de COMERCIALIZACIÓN o IDONEIDAD PARA UN PROPÓSITO PARTICULAR. Véase la Licencia Pública General GNU para más detalles.<br><br>
+              Deberías haber recibido una copia de la Licencia Pública General GNU junto con este programa; si no, consulta <a href="https://www.gnu.org/licenses/" target="_blank">https://www.gnu.org/licenses/</a><br><br>
               Contacto: hello@seresworldwide.com
             </li>
           </ul>
@@ -478,13 +419,13 @@
           </p>
         
           <p class="info-body">
-            root ist kostenlos und Open Source. Das Repository wird bald öffentlich sein: <a href="https://github.com/serespaciales/root" target="_blank">github.com/serespaciales/root</a>.
+            root ist kostenlos und Open Source. Klicke <a href="https://github.com/serespaciales/root" target="_blank">hier</a>, wenn du zur Weiterentwicklung beitragen möchtest.
           </p>
         
           <h3 class="info-section-title">Wie du anfängst</h3>
           <ul class="info-list">
             <li>*Drücke H, um das Haupt-Canvas zu betreten. Drücke H erneut, um zu diesem Fenster zurückzukehren.</li>
-            <li>*Wähle ein Tool aus (Verlauf, Form, oder Text).</li>
+            <li>*Wähle ein Tool aus (Verlauf oder Form).</li>
             <li>*Zeichne oder klicke auf ein Modul, um ein Visual hinzuzufügen.</li>
             <li>*Verwende Wasser, Sonne oder Vitamine, um dein Werk wachsen und sich verändern zu lassen.</li>
             <li>*Speichere, exportiere oder teile jede Phase mit deinem einzigartigen Seed.</li>
@@ -504,7 +445,7 @@
             <li><b>*Was ist root?</b><br>
               Eine modulare Designplattform, auf der deine visuellen Kompositionen online wachsen und sich entwickeln.</li>
             <li><b>*Brauche ich Design- oder Programmierkenntnisse?</b><br>
-              Nein. root ist für alle gedacht. wähle einfach ein Tool und fang an.</li>
+              Nein. root ist für alle gedacht – wähle einfach ein Tool und fang an.</li>
             <li><b>*Wie funktioniert das Wachstum?</b><br>
               Jedes Visual entwickelt sich je nach deinen Aktionen (Wasser, Sonne, Vitamine usw.). Durch Algorithmen und Codefunktionen kannst du jede Wachstumsstufe sehen.</li>
             <li><b>*Kann ich meine Arbeiten speichern oder teilen?</b><br>
@@ -521,12 +462,13 @@
         
           <h3 class="info-section-title">Credits</h3>
           <ul class="info-list">
-            <li><b>root</b> ist ein Projekt von <b>Ana María van Dierendonck</b>, entstanden im Rahmen ihrer MDes-Abschlussarbeit an der <b>Hochschule für Gestaltung und Kunst (HGK)</b>, Departement Design, 2025. Betreuung: <em>Ted Davis, Jiri Oplatek, Bérénice Serra, Invar Torre-Hollaus</em>. 
-            <li>Inspiriert von Plattformen wie <a href="https://hydra.ojack.xyz/" target="_blank">Hydra</a> und <a href="https://teddavis.org/p5live/" target="_blank">P5lIVE</a>.</li>
+            <li><b>root</b> ist ein Projekt von Ana María, inspiriert von Plattformen wie <a href="https://hydra.ojack.xyz/" target="_blank">Hydra</a> und <a href="https://teddavis.org/p5live/" target="_blank">P5lIVE</a>.</li>
             <li>Danke an die Creative Coding Community und alle, die zur Open-Source-Kultur beitragen.</li>
             <li>root – Modular Poster Garden<br><br>
-              Copyright (C) 2025 Ana María van Dierendonck <br><br>
-              GNU General Public License v2.0 — <a href="https://www.gnu.org/licenses/" target="_blank">gnu.org/licenses</a><br><br>
+              Copyright (C) 2025<br><br>
+              Dieses Programm ist freie Software; du kannst es unter den Bedingungen der GNU General Public License veröffentlichen und/oder modifizieren, wie sie von der Free Software Foundation veröffentlicht wurde; entweder Version 2 oder (nach deiner Wahl) jede spätere Version.<br><br>
+              Dieses Programm wird in der Hoffnung verbreitet, dass es nützlich ist, aber OHNE JEGLICHE GARANTIE; sogar ohne die implizierte Garantie der MARKTFÄHIGKEIT oder TAUGLICHKEIT FÜR EINEN BESTIMMTEN ZWECK. Siehe die GNU General Public License für weitere Details.<br><br>
+              Du solltest eine Kopie der GNU General Public License zusammen mit diesem Programm erhalten haben; falls nicht, siehe <a href="https://www.gnu.org/licenses/" target="_blank">https://www.gnu.org/licenses/</a><br><br>
               Kontakt: hello@seresworldwide.com
             </li>
           </ul>
@@ -555,36 +497,6 @@
       });
     });
   </script>
-
-  <script>
-    // Show what's new popup once per version
-    const WHATS_NEW_KEY = 'root_seen_v1';
-    document.addEventListener('DOMContentLoaded', () => {
-      const popup  = document.getElementById('whatsnew-popup');
-      const close  = document.getElementById('whatsnew-close');
-      if (!popup || !close) return;
-
-      if (!localStorage.getItem(WHATS_NEW_KEY)) {
-        // Small delay so the canvas and palette settle first
-        setTimeout(() => {
-          popup.style.display = 'flex';
-        }, 800);
-      }
-
-      close.addEventListener('click', () => {
-        popup.style.display = 'none';
-        localStorage.setItem(WHATS_NEW_KEY, '1');
-      });
-
-      // also close on outside click
-      popup.addEventListener('click', (e) => {
-        if (e.target === popup) {
-          popup.style.display = 'none';
-          localStorage.setItem(WHATS_NEW_KEY, '1');
-        }
-      });
-    });
-  </script>
   
   
 
@@ -592,14 +504,15 @@
   <input type="file" id="image-loader" accept="image/*" style="display:none" />
 
 
-<!-- p5 addon must load before sketch.js so fillGradient is available in setup() -->
-<script src="https://unpkg.com/p5.fillgradient@0.1.2/dist/p5.fillGradient.min.js"></script>
+<!-- Versión empaquetada con todo lo necesario -->
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.8/dist/ffmpeg.min.js"></script>
 <script src="common.js"></script>
 <script src="growthfx.js"></script>
 <script src="growth.js"></script>
 <script src="sketch.js"></script>
 <script src="setupGrowth.js"></script>
-<script src="utils.js"></script>
+<script src="utils.js"></script> 
+<script src="https://unpkg.com/p5.fillgradient@0.1.2/dist/p5.fillGradient.min.js"></script>
  
 </body>
 </html>

@@ -426,7 +426,6 @@ function setupToolLogic() {
   const toolNames = {
     gradient: "Gradient",
     shape: "Shape",
-    word: "Word",
     text: "Text",
     image: "Image",
     texture: "Texture",

@@ -465,13 +465,19 @@ function setup() {
   // 3. Fetch inicial a Firestore — wait for Firebase to be ready first
   const container = select('#canvas-wrapper').elt;
 
-  function waitForSeedsColSketch(cb, attempts = 60, interval = 200) {
-    // common.js initializes Firebase synchronously before p5 calls setup(),
-    // so seedsCol should already be ready on the first check.
-    // 60 * 200ms = 12s max safety net for slow connections.
+  function waitForSeedsColSketch(cb, attempts = 20, interval = 100) {
+    // common.js now calls initializeFirebase() immediately so this should
+    // resolve on the first or second tick in most cases.
+    // Try to manually init if somehow it wasn't called yet.
+    if (!window.seedsCol && typeof firebase !== 'undefined') {
+      try {
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        window.seedsCol = firebase.firestore().collection('seeds');
+      } catch(e) {}
+    }
     if (window.seedsCol) { cb(); return; }
     if (attempts <= 0) {
-      console.error('Timed out waiting for Firebase — starting offline fallback');
+      console.error('Timed out — starting offline fallback');
       canvas = createCanvas(container.clientWidth, container.clientHeight).parent('canvas-wrapper');
       canvas.elt.setAttribute('tabindex', '0');
       gradientBuffer = createGraphics(width, height);
@@ -2472,6 +2478,9 @@ document.getElementById("text-kerning").addEventListener("input", e => {
   }
   textSettings.letterSpacing = parseFloat(e.target.value);
 });
+
+document.getElementById("add-layer").addEventListener("click", createLayer);
+
 
 function updateAllTextBlocks() {
   if (MODE !== 'edit') {

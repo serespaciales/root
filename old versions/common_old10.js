@@ -13,22 +13,41 @@ let animationsPaused = false; //PAUSAR EL CRECIMIENTO GLOBAL, AYUDA CON EL LAG !
 
 
 
-// Firebase SDKs are loaded synchronously before common.js in the HTML,
-// so we can initialize immediately and synchronously right here.
-// No retries, no DOMContentLoaded — just init once, cleanly.
-(function initFirebase() {
-  try {
-    if (typeof firebase === 'undefined') {
-      console.error('Firebase SDK not available — check script load order in HTML.');
+function initializeFirebase(retries = 3, delay = 1000) {
+  if (typeof firebase === 'undefined') {
+    console.warn(`Firebase SDK not loaded. Retrying ${retries} more time(s) in ${delay}ms...`);
+    if (retries > 0) {
+      setTimeout(() => initializeFirebase(retries - 1, delay * 2), delay);
+      return;
+    } else {
+      console.error('Firebase failed to load after retries. Ensure Firebase SDK script is included before common.js and check network connectivity.');
       return;
     }
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    window.seedsCol = firebase.firestore().collection('seeds');
-    console.log('Firebase ready, seedsCol defined');
-  } catch (err) {
-    console.error('Firebase init failed:', err);
   }
-})();
+
+  try {
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+      window.seedsCol = firebase.firestore().collection('seeds');
+      console.log('Firebase initialized successfully, seedsCol defined');
+    } else {
+      window.seedsCol = firebase.firestore().collection('seeds');
+      console.log('Firebase already initialized, seedsCol assigned');
+    }
+  } catch (err) {
+    console.error('Firebase initialization failed:', err);
+  }
+}
+
+// Call immediately — Firebase SDK loads before common.js in <body>,
+// so it's already available when this script is parsed.
+// DOMContentLoaded is too late: p5's setup() fires before it.
+initializeFirebase();
+
+// Also call on DOMContentLoaded as a safety net in case of edge cases
+document.addEventListener('DOMContentLoaded', () => {
+  if (!window.seedsCol) initializeFirebase();
+});
 
 function computeElapsedDays(ts) {
   const then = ts?.toDate ? ts.toDate() : new Date();

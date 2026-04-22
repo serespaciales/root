@@ -465,21 +465,17 @@ function setup() {
   // 3. Fetch inicial a Firestore — wait for Firebase to be ready first
   const container = select('#canvas-wrapper').elt;
 
-  function waitForSeedsColSketch(cb, attempts = 60, interval = 200) {
-    // common.js initializes Firebase synchronously before p5 calls setup(),
-    // so seedsCol should already be ready on the first check.
-    // 60 * 200ms = 12s max safety net for slow connections.
+  function waitForSeedsColSketch(cb, attempts = 40, interval = 250) {
     if (window.seedsCol) { cb(); return; }
     if (attempts <= 0) {
-      console.error('Timed out waiting for Firebase — starting offline fallback');
+      console.error('Timed out waiting for seedsCol in setup()');
+      // Fallback: start with a blank seed so the page doesn't freeze
       canvas = createCanvas(container.clientWidth, container.clientHeight).parent('canvas-wrapper');
-      canvas.elt.setAttribute('tabindex', '0');
       gradientBuffer = createGraphics(width, height);
-      const fc = 4, fr = 4;
-      columnPositions = Array.from({ length: fc + 1 }, (_, i) => (i * width) / fc);
-      rowPositions    = Array.from({ length: fr + 1 }, (_, i) => (i * height) / fr);
+      columnPositions = Array.from({ length: 3 }, (_, i) => (i * width) / 2);
+      rowPositions    = Array.from({ length: 3 }, (_, i) => (i * height) / 2);
       computeGridPoints();
-      window.layers = [initializeDefaultLayer(fr, fc)];
+      window.layers = [initializeDefaultLayer()];
       window.activeLayer = window.layers[0];
       if (MODE === 'edit') renderLayersUI();
       redraw();
@@ -1048,10 +1044,6 @@ for (let i = 0; i < columnPositions.length; i++) {
 }
 
 function drawVisuals() {
-  // Safety: if no activeLayer, pick the first available or bail
-  if (!window.activeLayer && window.layers?.length > 0) {
-    window.activeLayer = window.layers[0];
-  }
   const activeLayer = window.activeLayer;
   if (!activeLayer) return;
 
@@ -2473,6 +2465,9 @@ document.getElementById("text-kerning").addEventListener("input", e => {
   textSettings.letterSpacing = parseFloat(e.target.value);
 });
 
+document.getElementById("add-layer").addEventListener("click", createLayer);
+
+
 function updateAllTextBlocks() {
   if (MODE !== 'edit') {
     console.log('this is is an editing function');
@@ -2929,28 +2924,12 @@ function renderLayersUI() {
     delBtn.onclick = (e) => {
       e.stopPropagation();
       window.layers.splice(index, 1);
-
-      // Never allow zero layers — auto-create a blank one
-      if (window.layers.length === 0) {
-        const blank = {
-          id: generateLayerID(),
-          name: "Layer 1",
-          type: "gradient",
-          color: randomColorFromNeonPalette(),
-          visible: true,
-          visuals: {}
-        };
-        window.layers.push(blank);
+      if (window.activeLayer === layer) {
+        window.activeLayer = window.layers[0] || null;
       }
-
-      if (window.activeLayer === layer || !window.layers.includes(window.activeLayer)) {
-        window.activeLayer = window.layers[0];
-      }
-
       renderLayersUI();
       debounceSaveToFirestore();
       redraw();
-
       const addLayerBtn = document.getElementById("add-layer");
       if (window.layers.length < 10 && addLayerBtn) {
         addLayerBtn.disabled = false;
